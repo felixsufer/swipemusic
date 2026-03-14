@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node server/index.js",
-    "build": "cd client && npm install --legacy-peer-deps && npm run build"
+    "build": "npm install --prefix server && cd client && npm install --legacy-peer-deps && npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
