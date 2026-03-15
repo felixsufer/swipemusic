@@ -15,7 +15,17 @@ function App() {
 
   const [currentMode, setCurrentMode] = useState('trending');
   const [tracks, setTracks] = useState([]);
-  const [seenTrackIds, setSeenTrackIds] = useState(new Set());
+  // Per-mode seen track IDs — persisted to sessionStorage
+  const [seenTrackIdsByMode, setSeenTrackIdsByMode] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('seenTrackIdsByMode');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, new Set(v)]));
+      }
+    } catch (e) {}
+    return { trending: new Set(), genre: new Set(), recommendations: new Set() };
+  });
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLikedTracks, setShowLikedTracks] = useState(false);
@@ -68,39 +78,34 @@ function App() {
   const fetchTracks = useCallback(async (append = false) => {
     setIsLoading(true);
     try {
+      const modeKey = currentMode === 'genre' ? `genre_${selectedGenre}` : currentMode;
+      const currentSeenIds = seenTrackIdsByMode[modeKey] || new Set();
+
       let url = `${API_BASE}/tracks?mode=${currentMode}&limit=20`;
 
       if (currentMode === 'genre') {
         url += `&genre=${selectedGenre}`;
-      } else if (currentMode === 'recommendations') {
-        const likedIds = getLikedTrackIds();
-        if (likedIds.length > 0) url += `&likedTrackIds=${likedIds.join(',')}`;
       }
 
-      // Always send seen + blacklisted to backend so it filters them out
-      if (seenTrackIds.size > 0) {
-        url += `&seenIds=${Array.from(seenTrackIds).join(',')}`;
+      // Send per-mode seen IDs (only from current mode, not cross-mode)
+      if (currentSeenIds.size > 0) {
+        url += `&seenIds=${Array.from(currentSeenIds).join(',')}`;
       }
-      if (blacklistedIds.length > 0) {
-        url += `&blacklistedIds=${blacklistedIds.join(',')}`;
-      }
-      // Also send liked IDs so backend never returns already-liked tracks
+
+      // Always send liked + skipped + blacklisted across all modes
       const likedIds = getLikedTrackIds();
-      if (likedIds.length > 0) {
-        url += `&likedTrackIds=${likedIds.join(',')}`;
-      }
-      // Send skipped IDs too
+      if (likedIds.length > 0) url += `&likedTrackIds=${likedIds.join(',')}`;
+
       const skippedIds = skipped.map(t => t.id).filter(Boolean);
-      if (skippedIds.length > 0) {
-        url += `&skippedIds=${skippedIds.join(',')}`;
-      }
+      if (skippedIds.length > 0) url += `&skippedIds=${skippedIds.join(',')}`;
+
+      if (blacklistedIds.length > 0) url += `&blacklistedIds=${blacklistedIds.join(',')}`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.tracks && data.tracks.length > 0) {
-        // Also filter client-side as a safety net
-        const newTracks = data.tracks.filter(track => !seenTrackIds.has(track.id));
+        const newTracks = data.tracks.filter(t => !currentSeenIds.has(t.id));
 
         if (append) {
           setTracks(prev => [...prev, ...newTracks]);
@@ -108,13 +113,23 @@ function App() {
           setTracks(newTracks);
         }
 
-        // Update seen track IDs — persist across mode switches
-        setSeenTrackIds(prev => {
-          const updated = new Set(prev);
-          newTracks.forEach(track => updated.add(track.id));
+        // Update per-mode seen IDs and persist to sessionStorage
+        setSeenTrackIdsByMode(prev => {
+          const updated = { ...prev };
+          const modeSet = new Set(prev[modeKey] || []);
+          newTracks.forEach(t => modeSet.add(t.id));
+          updated[modeKey] = modeSet;
+          // Persist to sessionStorage
+          try {
+            const serializable = Object.fromEntries(
+              Object.entries(updated).map(([k, v]) => [k, Array.from(v)])
+            );
+            sessionStorage.setItem('seenTrackIdsByMode', JSON.stringify(serializable));
+          } catch (e) {}
           return updated;
         });
       } else {
+        setTracks([]);
         console.warn('No tracks received');
       }
     } catch (error) {
@@ -122,7 +137,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIds, blacklistedIds]);
+  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, blacklistedIds, skipped]);
 
   // Fetch tracks when mode changes
   useEffect(() => {
@@ -133,9 +148,10 @@ function App() {
   const handleModeChange = (mode) => {
     setCurrentMode(mode);
     setTracks([]);
-    // DO NOT reset seenTrackIds — persist across mode switches so backend never re-serves same tracks
     setCurrentTrack(null);
     setStackKey(prev => prev + 1);
+    // seenTrackIdsByMode persists per-mode — switching modes gives fresh content
+    // but switching BACK to same mode won't re-show already-seen tracks
   };
 
   const handleLike = (track) => {
