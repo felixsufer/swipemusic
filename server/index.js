@@ -12,7 +12,7 @@ app.use(express.json());
 // API routes first
 app.use('/api', musicRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
-app.get('/version', (req, res) => res.json({ name: 'SwipeSound', commit: '5e8b98d', ts: new Date().toISOString() }));
+app.get('/version', (req, res) => res.json({ name: 'SwipeSound', commit: '5bfffb5-1773577216', ts: new Date().toISOString() }));
 
 // Serve React production build
 app.use(express.static(path.join(__dirname, '../client/build')));
