@@ -32,8 +32,16 @@ function App() {
   });
   const [currentTab, setCurrentTab] = useState('discover');
 
+  // Session ID for event tracking
+  useEffect(() => {
+    if (!sessionStorage.getItem('session_id')) {
+      sessionStorage.setItem('session_id', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    }
+  }, []);
+
   const {
     liked,
+    skipped,
     tasteProfile,
     likeTrack,
     skipTrack,
@@ -41,6 +49,20 @@ function App() {
     hasEnoughData,
     getLikedTrackIds
   } = useTasteProfile(user?.id);
+
+  // Helper to POST events to backend
+  const sendEvent = useCallback((event_type, track) => {
+    fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type,
+        track_id: track?.id,
+        user_id: user?.id,
+        session_id: sessionStorage.getItem('session_id') || Date.now().toString()
+      })
+    }).catch(() => {});
+  }, [user?.id]);
 
   // Fetch tracks based on current mode
   const fetchTracks = useCallback(async (append = false) => {
@@ -66,6 +88,11 @@ function App() {
       const likedIds = getLikedTrackIds();
       if (likedIds.length > 0) {
         url += `&likedTrackIds=${likedIds.join(',')}`;
+      }
+      // Send skipped IDs too
+      const skippedIds = skipped.map(t => t.id).filter(Boolean);
+      if (skippedIds.length > 0) {
+        url += `&skippedIds=${skippedIds.join(',')}`;
       }
 
       const response = await fetch(url);
@@ -113,10 +140,12 @@ function App() {
 
   const handleLike = (track) => {
     likeTrack(track);
+    sendEvent('like', track);
   };
 
   const handleSkip = (track) => {
     skipTrack(track);
+    sendEvent('skip', track);
   };
 
   const handleSaveToCrate = (track) => {
