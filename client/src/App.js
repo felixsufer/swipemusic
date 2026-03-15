@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ModeSelector from './components/ModeSelector';
 import SwipeStack from './components/SwipeStack';
 import PlayerBar from './components/PlayerBar';
@@ -57,11 +57,11 @@ function App() {
     getLikedTrackIds
   } = useTasteProfile(user?.id);
 
-  // Merge DB blacklist with local blacklist
-  const allBlacklistedIds = [
+  // Merge DB blacklist with local blacklist — stable reference
+  const allBlacklistedIds = useMemo(() => [
     ...localBlacklistedIds,
     ...Array.from(dbBlacklistedIds)
-  ];
+  ], [localBlacklistedIds, dbBlacklistedIds]);
 
   // Fetch tracks based on current mode
   const fetchTracks = useCallback(async (append = false) => {
@@ -70,14 +70,16 @@ function App() {
       const modeKey = currentMode === 'genre' ? `genre_${selectedGenre}` : currentMode;
       const currentSeenIds = seenTrackIdsByMode[modeKey] || new Set();
 
-      let url = `${API_BASE}/tracks?mode=${currentMode}&limit=20`;
+      // Merge per-mode session seen IDs with DB seen IDs
+      const allSeenIds = new Set([...currentSeenIds, ...dbSeenIds]);
+
+      // Request more candidates when we have a large seen history
+      const fetchLimit = Math.min(50, 20 + Math.floor(allSeenIds.size / 5));
+      let url = `${API_BASE}/tracks?mode=${currentMode}&limit=${fetchLimit}`;
 
       if (currentMode === 'genre') {
         url += `&genre=${selectedGenre}`;
       }
-
-      // Merge per-mode session seen IDs with DB seen IDs
-      const allSeenIds = new Set([...currentSeenIds, ...dbSeenIds]);
       if (allSeenIds.size > 0) {
         // Cap at 200 to avoid URL length issues — DB handles the rest
         const seenArr = Array.from(allSeenIds).slice(-200);
@@ -125,11 +127,12 @@ function App() {
     }
   }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds]);
 
-  // Fetch tracks when mode changes
+  // Fetch tracks when mode changes — wait for DB history to load first
   useEffect(() => {
+    if (!eventsLoaded) return; // Don't fetch until DB seenIds are loaded
     fetchTracks(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMode, selectedGenre]);
+  }, [currentMode, selectedGenre, eventsLoaded]);
 
   const handleModeChange = (mode) => {
     setCurrentMode(mode);
