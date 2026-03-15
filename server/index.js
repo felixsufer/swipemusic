@@ -12,6 +12,7 @@ app.use(express.json());
 // API routes first
 app.use('/api', musicRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/version', (req, res) => res.json({ name: 'SwipeSound', commit: '5e8b98d', ts: new Date().toISOString() }));
 
 // Serve React production build
 app.use(express.static(path.join(__dirname, '../client/build')));
@@ -25,4 +26,13 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`SwipeSound server running on port ${PORT}`);
+});
+
+// Version check endpoint
+app.get('/version', (req, res) => {
+  res.json({ 
+    version: '5e8b98d',
+    name: 'SwipeSound',
+    built: new Date().toISOString()
+  });
 });
