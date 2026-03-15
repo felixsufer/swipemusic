@@ -74,7 +74,7 @@ class DeezerProvider extends MusicProvider {
         url = `${this.baseUrl}/search?q=genre:"${encodeURIComponent(genre)}"&limit=50`;
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url, { timeout: 8000 });
       const data = await response.json();
 
       if (data.data && data.data.length > 0) {
@@ -83,7 +83,7 @@ class DeezerProvider extends MusicProvider {
 
       return [];
     } catch (error) {
-      console.error('Deezer search error:', error);
+      console.error('Deezer search error:', error.message);
       return [];
     }
   }
@@ -134,17 +134,23 @@ class DeezerProvider extends MusicProvider {
    */
   async getTrendingTracks(limit = 50) {
     try {
-      const response = await fetch(`${this.baseUrl}/chart/0/tracks?limit=${limit}`);
+      const response = await fetch(`${this.baseUrl}/chart/0/tracks?limit=${limit}`, { timeout: 6000 });
       const data = await response.json();
 
       if (data.data && data.data.length > 0) {
         return data.data.map(track => this.formatTrack(track));
       }
 
-      return [];
+      // Fallback: search for popular tracks
+      return this.search('top hits');
     } catch (error) {
-      console.error('Deezer getTrendingTracks error:', error);
-      return [];
+      console.error('Deezer getTrendingTracks error:', error.message);
+      // Fallback: search for popular tracks
+      try {
+        return this.search('top hits');
+      } catch (e) {
+        return [];
+      }
     }
   }
 

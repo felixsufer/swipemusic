@@ -132,8 +132,12 @@ class FeedEngine {
       return candidates.slice(0, limit);
     } catch (err) {
       console.error("FeedEngine error:", err.message);
-      // Fallback: raw trending
-      return deezer.getTrendingTracks(limit);
+      // Fallback: simple search
+      try {
+        return await deezer.search('top hits');
+      } catch (e) {
+        return [];
+      }
     }
   }
 }
