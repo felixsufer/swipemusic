@@ -5,6 +5,7 @@ import PlayerBar from './components/PlayerBar';
 import LikedTracks from './components/LikedTracks';
 import AuthScreen from './components/AuthScreen';
 import { useTasteProfile } from './hooks/useTasteProfile';
+import { useTrackEvents } from './hooks/useTrackEvents';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
@@ -15,24 +16,20 @@ function App() {
 
   const [currentMode, setCurrentMode] = useState('trending');
   const [tracks, setTracks] = useState([]);
-  // Per-mode seen track IDs — persisted to sessionStorage
-  const [seenTrackIdsByMode, setSeenTrackIdsByMode] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem('seenTrackIdsByMode');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, new Set(v)]));
-      }
-    } catch (e) {}
-    return { trending: new Set(), genre: new Set(), recommendations: new Set() };
-  });
+  // Per-mode seen track IDs — session only (DB handles cross-session)
+  const [seenTrackIdsByMode, setSeenTrackIdsByMode] = useState(
+    { trending: new Set(), genre: new Set(), recommendations: new Set() }
+  );
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLikedTracks, setShowLikedTracks] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState('electronic');
   const [stackKey, setStackKey] = useState(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [blacklistedIds, setBlacklistedIds] = useState(() => {
+  // Track events + DB-persisted seen/blacklist history
+  const { seenIds: dbSeenIds, blacklistedIds: dbBlacklistedIds, recordEvent, loaded: eventsLoaded } = useTrackEvents(user?.id);
+
+  const [localBlacklistedIds, setLocalBlacklistedIds] = useState(() => {
     const stored = localStorage.getItem('blacklistedIds');
     return stored ? JSON.parse(stored) : [];
   });
@@ -60,19 +57,11 @@ function App() {
     getLikedTrackIds
   } = useTasteProfile(user?.id);
 
-  // Helper to POST events to backend
-  const sendEvent = useCallback((event_type, track) => {
-    fetch('/api/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event_type,
-        track_id: track?.id,
-        user_id: user?.id,
-        session_id: sessionStorage.getItem('session_id') || Date.now().toString()
-      })
-    }).catch(() => {});
-  }, [user?.id]);
+  // Merge DB blacklist with local blacklist
+  const allBlacklistedIds = [
+    ...localBlacklistedIds,
+    ...Array.from(dbBlacklistedIds)
+  ];
 
   // Fetch tracks based on current mode
   const fetchTracks = useCallback(async (append = false) => {
@@ -87,9 +76,12 @@ function App() {
         url += `&genre=${selectedGenre}`;
       }
 
-      // Send per-mode seen IDs (only from current mode, not cross-mode)
-      if (currentSeenIds.size > 0) {
-        url += `&seenIds=${Array.from(currentSeenIds).join(',')}`;
+      // Merge per-mode session seen IDs with DB seen IDs
+      const allSeenIds = new Set([...currentSeenIds, ...dbSeenIds]);
+      if (allSeenIds.size > 0) {
+        // Cap at 200 to avoid URL length issues — DB handles the rest
+        const seenArr = Array.from(allSeenIds).slice(-200);
+        url += `&seenIds=${seenArr.join(',')}`;
       }
 
       // Always send liked + skipped + blacklisted across all modes
@@ -99,7 +91,7 @@ function App() {
       const skippedIds = skipped.map(t => t.id).filter(Boolean);
       if (skippedIds.length > 0) url += `&skippedIds=${skippedIds.join(',')}`;
 
-      if (blacklistedIds.length > 0) url += `&blacklistedIds=${blacklistedIds.join(',')}`;
+      if (allBlacklistedIds.length > 0) url += `&blacklistedIds=${allBlacklistedIds.join(',')}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -119,13 +111,7 @@ function App() {
           const modeSet = new Set(prev[modeKey] || []);
           newTracks.forEach(t => modeSet.add(t.id));
           updated[modeKey] = modeSet;
-          // Persist to sessionStorage
-          try {
-            const serializable = Object.fromEntries(
-              Object.entries(updated).map(([k, v]) => [k, Array.from(v)])
-            );
-            sessionStorage.setItem('seenTrackIdsByMode', JSON.stringify(serializable));
-          } catch (e) {}
+          // DB (useTrackEvents) handles cross-session persistence
           return updated;
         });
       } else {
@@ -137,7 +123,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, blacklistedIds, skipped]);
+  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds]);
 
   // Fetch tracks when mode changes
   useEffect(() => {
@@ -156,36 +142,30 @@ function App() {
 
   const handleLike = (track) => {
     likeTrack(track);
-    sendEvent('like', track);
+    recordEvent('like', track, { mode: currentMode, genre: selectedGenre });
   };
 
   const handleSkip = (track) => {
     skipTrack(track);
-    sendEvent('skip', track);
+    recordEvent('skip', track, { mode: currentMode, genre: selectedGenre });
   };
 
   const handleSaveToCrate = (track) => {
     const updated = [...crateItems, track];
     setCrateItems(updated);
     localStorage.setItem('crates', JSON.stringify(updated));
+    handleSaveToCrateEvent(track);
   };
 
   const handleBlacklist = (track) => {
-    const updated = [...blacklistedIds, track.id];
-    setBlacklistedIds(updated);
+    const updated = [...localBlacklistedIds, track.id];
+    setLocalBlacklistedIds(updated);
     localStorage.setItem('blacklistedIds', JSON.stringify(updated));
+    recordEvent('blacklist', track, { mode: currentMode, genre: selectedGenre });
+  };
 
-    // Send event to backend
-    fetch('/api/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event_type: 'blacklist',
-        track_id: track.id,
-        user_id: user?.id,
-        session_id: Date.now()
-      })
-    }).catch(err => console.error('Error sending blacklist event:', err));
+  const handleSaveToCrateEvent = (track) => {
+    recordEvent('save_crate', track, { mode: currentMode, genre: selectedGenre });
   };
 
   const handleNeedMore = () => {
