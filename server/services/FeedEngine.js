@@ -14,15 +14,30 @@ class FeedEngine {
     if (mode === "trending") {
       candidates = await deezer.getTrendingTracks(limit);
     } else if (mode === "genre" && genre) {
-      // Mix: Deezer genre charts + Last.fm tag top tracks
+      // Use multiple search strategies and merge results
+      // Last.fm gives accurate genre tags; Deezer gives previews
       const [deezerTracks, lastfmTracks] = await Promise.allSettled([
         deezer.getTracksByGenre(genre, 0),
-        lastfm.getTopTracksByTag(genre, 20)
+        lastfm.getTopTracksByTag(genre, 30)
       ]);
-      candidates = [
-        ...(deezerTracks.status === "fulfilled" ? deezerTracks.value : []),
-        ...(lastfmTracks.status === "fulfilled" ? lastfmTracks.value : [])
-      ];
+      const deezerResults = deezerTracks.status === "fulfilled" ? deezerTracks.value : [];
+      const lastfmResults = lastfmTracks.status === "fulfilled" ? lastfmTracks.value : [];
+
+      // For Last.fm tracks without previews, try to find on Deezer
+      const enriched = await Promise.allSettled(
+        lastfmResults.filter(t => !t.preview).slice(0, 10).map(t =>
+          deezer.search(`${t.artist} ${t.title}`).then(r => r[0] || null)
+        )
+      );
+      const enrichedTracks = enriched
+        .filter(r => r.status === "fulfilled" && r.value)
+        .map(r => r.value);
+
+      candidates = [...deezerResults, ...enrichedTracks];
+      // If still empty, fallback to broader search
+      if (candidates.length === 0) {
+        candidates = await deezer.search(genre);
+      }
     } else if (mode === "recommendations" && likedTrackIds.length > 0) {
       // Use last 3 liked tracks to seed similarity
       const seedTracks = likedTrackIds.slice(-3);

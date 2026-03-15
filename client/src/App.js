@@ -46,12 +46,25 @@ function App() {
   const fetchTracks = useCallback(async (append = false) => {
     setIsLoading(true);
     try {
-      let url = `${API_BASE}/tracks?mode=${currentMode}`;
+      let url = `${API_BASE}/tracks?mode=${currentMode}&limit=20`;
 
       if (currentMode === 'genre') {
         url += `&genre=${selectedGenre}`;
       } else if (currentMode === 'recommendations') {
         const likedIds = getLikedTrackIds();
+        if (likedIds.length > 0) url += `&likedTrackIds=${likedIds.join(',')}`;
+      }
+
+      // Always send seen + blacklisted to backend so it filters them out
+      if (seenTrackIds.size > 0) {
+        url += `&seenIds=${Array.from(seenTrackIds).join(',')}`;
+      }
+      if (blacklistedIds.length > 0) {
+        url += `&blacklistedIds=${blacklistedIds.join(',')}`;
+      }
+      // Also send liked IDs so backend never returns already-liked tracks
+      const likedIds = getLikedTrackIds();
+      if (likedIds.length > 0) {
         url += `&likedTrackIds=${likedIds.join(',')}`;
       }
 
@@ -59,7 +72,7 @@ function App() {
       const data = await response.json();
 
       if (data.tracks && data.tracks.length > 0) {
-        // Filter out already-seen tracks
+        // Also filter client-side as a safety net
         const newTracks = data.tracks.filter(track => !seenTrackIds.has(track.id));
 
         if (append) {
@@ -68,7 +81,7 @@ function App() {
           setTracks(newTracks);
         }
 
-        // Update seen track IDs
+        // Update seen track IDs — persist across mode switches
         setSeenTrackIds(prev => {
           const updated = new Set(prev);
           newTracks.forEach(track => updated.add(track.id));
@@ -82,7 +95,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIds]);
+  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIds, blacklistedIds]);
 
   // Fetch tracks when mode changes
   useEffect(() => {
@@ -93,9 +106,8 @@ function App() {
   const handleModeChange = (mode) => {
     setCurrentMode(mode);
     setTracks([]);
-    setSeenTrackIds(new Set());
+    // DO NOT reset seenTrackIds — persist across mode switches so backend never re-serves same tracks
     setCurrentTrack(null);
-    // Increment key to remount SwipeStack with fade effect
     setStackKey(prev => prev + 1);
   };
 
