@@ -22,6 +22,15 @@ function App() {
   const [selectedGenre, setSelectedGenre] = useState('electronic');
   const [stackKey, setStackKey] = useState(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [blacklistedIds, setBlacklistedIds] = useState(() => {
+    const stored = localStorage.getItem('blacklistedIds');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [crateItems, setCrateItems] = useState(() => {
+    const stored = localStorage.getItem('crates');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [currentTab, setCurrentTab] = useState('discover');
 
   const {
     liked,
@@ -98,6 +107,30 @@ function App() {
     skipTrack(track);
   };
 
+  const handleSaveToCrate = (track) => {
+    const updated = [...crateItems, track];
+    setCrateItems(updated);
+    localStorage.setItem('crates', JSON.stringify(updated));
+  };
+
+  const handleBlacklist = (track) => {
+    const updated = [...blacklistedIds, track.id];
+    setBlacklistedIds(updated);
+    localStorage.setItem('blacklistedIds', JSON.stringify(updated));
+
+    // Send event to backend
+    fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'blacklist',
+        track_id: track.id,
+        user_id: user?.id,
+        session_id: Date.now()
+      })
+    }).catch(err => console.error('Error sending blacklist event:', err));
+  };
+
   const handleNeedMore = () => {
     // Load more tracks when running low
     if (!isLoading && tracks.length < 10) {
@@ -134,7 +167,7 @@ function App() {
     return (
       <div className="app loading-screen">
         <div className="loading-logo">
-          <h1 className="app-title">SwipeMusic</h1>
+          <h1 className="app-title">SwipeSound</h1>
           <div className="loading-spinner"></div>
         </div>
       </div>
@@ -146,18 +179,46 @@ function App() {
     return <AuthScreen onSignIn={signInWithGoogle} />;
   }
 
+  const renderTabContent = () => {
+    if (currentTab === 'discover') {
+      return <SwipeStack
+        key={stackKey}
+        tracks={tracks}
+        onLike={handleLike}
+        onSkip={handleSkip}
+        onNeedMore={handleNeedMore}
+        onTopCardChange={handleTopCardChange}
+        onUndo={handleUndo}
+        onSaveToCrate={handleSaveToCrate}
+        onBlacklist={handleBlacklist}
+        currentMode={currentMode}
+      />;
+    } else if (currentTab === 'crates') {
+      return <LikedTracks
+        tracks={liked}
+        crateItems={crateItems}
+        onClose={() => setCurrentTab('discover')}
+        onUnlike={handleUnlike}
+      />;
+    } else if (currentTab === 'search') {
+      return <div className="coming-soon">
+        <h2>Search</h2>
+        <p>Coming soon</p>
+      </div>;
+    } else if (currentTab === 'profile') {
+      return <div className="coming-soon">
+        <h2>Profile</h2>
+        <p>Coming soon</p>
+      </div>;
+    }
+  };
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <h1 className="app-title">SwipeMusic</h1>
+          <h1 className="app-title">SwipeSound</h1>
           <div className="header-actions">
-            <button
-              className="liked-button"
-              onClick={() => setShowLikedTracks(true)}
-            >
-              ♥ {liked.length}
-            </button>
             <div className="user-menu-container">
               <button
                 className="user-avatar"
@@ -187,69 +248,89 @@ function App() {
           </div>
         </div>
 
-        <ModeSelector
-          currentMode={currentMode}
-          onModeChange={handleModeChange}
-          hasEnoughData={hasEnoughData}
-        />
+        {currentTab === 'discover' && (
+          <>
+          <ModeSelector
+            currentMode={currentMode}
+            onModeChange={handleModeChange}
+            hasEnoughData={hasEnoughData}
+          />
 
-        {currentMode === 'genre' && (
-          <div className="genre-selector">
-            <select
-              value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
-              className="genre-select"
-            >
-              <option value="electronic">Electronic</option>
-              <option value="dance">Dance</option>
-              <option value="techno">Techno</option>
-              <option value="house">House</option>
-              <option value="bass">Bass Music</option>
-              <option value="dubstep">Dubstep</option>
-              <option value="dnb">Drum & Bass</option>
-              <option value="pop">Pop</option>
-              <option value="rock">Rock</option>
-              <option value="metal">Metal</option>
-              <option value="hiphop">Hip Hop</option>
-              <option value="rap">Rap</option>
-              <option value="rnb">R&B</option>
-            </select>
-          </div>
-        )}
-
-        {hasEnoughData && tasteProfile.topGenres.length > 0 && (
-          <div className="taste-profile">
-            <div className="profile-label">Your taste:</div>
-            <div className="top-genres">
-              {tasteProfile.topGenres.slice(0, 3).map((g, i) => (
-                <span key={i} className="genre-tag">{g.genre}</span>
-              ))}
+          {currentMode === 'genre' && (
+            <div className="genre-selector">
+              <select
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
+                className="genre-select"
+              >
+                <option value="electronic">Electronic</option>
+                <option value="dance">Dance</option>
+                <option value="techno">Techno</option>
+                <option value="house">House</option>
+                <option value="bass">Bass Music</option>
+                <option value="dubstep">Dubstep</option>
+                <option value="dnb">Drum & Bass</option>
+                <option value="pop">Pop</option>
+                <option value="rock">Rock</option>
+                <option value="metal">Metal</option>
+                <option value="hiphop">Hip Hop</option>
+                <option value="rap">Rap</option>
+                <option value="rnb">R&B</option>
+              </select>
             </div>
-          </div>
+          )}
+
+          {hasEnoughData && tasteProfile.topGenres.length > 0 && (
+            <div className="taste-profile">
+              <div className="profile-label">Your taste:</div>
+              <div className="top-genres">
+                {tasteProfile.topGenres.slice(0, 3).map((g, i) => (
+                  <span key={i} className="genre-tag">{g.genre}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
         )}
       </header>
 
       <main className="app-main">
-        <SwipeStack
-          key={stackKey}
-          tracks={tracks}
-          onLike={handleLike}
-          onSkip={handleSkip}
-          onNeedMore={handleNeedMore}
-          onTopCardChange={handleTopCardChange}
-          onUndo={handleUndo}
-        />
+        {renderTabContent()}
       </main>
 
       <PlayerBar currentTrack={currentTrack} />
 
-      {showLikedTracks && (
-        <LikedTracks
-          tracks={liked}
-          onClose={() => setShowLikedTracks(false)}
-          onUnlike={handleUnlike}
-        />
-      )}
+      {/* Bottom Navigation */}
+      <div className="bottom-nav">
+        <button
+          className={`nav-tab ${currentTab === 'discover' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('discover')}
+        >
+          <span className="nav-icon">🎵</span>
+          <span className="nav-label">Discover</span>
+        </button>
+        <button
+          className={`nav-tab ${currentTab === 'crates' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('crates')}
+        >
+          <span className="nav-icon">🗂</span>
+          <span className="nav-label">Crates</span>
+        </button>
+        <button
+          className={`nav-tab ${currentTab === 'search' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('search')}
+        >
+          <span className="nav-icon">🔍</span>
+          <span className="nav-label">Search</span>
+        </button>
+        <button
+          className={`nav-tab ${currentTab === 'profile' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('profile')}
+        >
+          <span className="nav-icon">👤</span>
+          <span className="nav-label">Profile</span>
+        </button>
+      </div>
     </div>
   );
 }

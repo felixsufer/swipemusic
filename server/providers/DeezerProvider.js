@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const MusicProvider = require('./MusicProvider');
+const { normalizeTrack } = require('../models/Track');
 
 /**
  * Deezer API implementation of MusicProvider
@@ -36,23 +37,22 @@ class DeezerProvider extends MusicProvider {
   }
 
   /**
-   * Normalize Deezer track object to standard format
+   * Format Deezer track for normalization
    */
-  normalizeTrack(track) {
-    return {
-      id: track.id.toString(),
+  formatTrack(track) {
+    // Map Deezer fields to the format expected by normalizeTrack
+    return normalizeTrack({
+      id: track.id,
       title: track.title,
-      artist: track.artist?.name || 'Unknown Artist',
-      artistId: track.artist?.id,
-      album: track.album?.title || 'Unknown Album',
-      albumCover: track.album?.cover_xl || track.album?.cover_big || track.album?.cover_medium || track.album?.cover,
-      albumCoverSmall: track.album?.cover_small || track.album?.cover,
-      albumCoverMedium: track.album?.cover_medium || track.album?.cover,
-      duration: track.duration,
+      artist: track.artist,
+      album: track.album,
       preview: track.preview,
+      link: track.link,
       genre: track.genre?.name || null,
-      provider: 'deezer'
-    };
+      genre_name: track.genre?.name || null,
+      rank: track.rank,
+      duration: track.duration
+    }, 'deezer');
   }
 
   /**
@@ -70,7 +70,7 @@ class DeezerProvider extends MusicProvider {
       const data = await response.json();
 
       if (data.data && data.data.length > 0) {
-        return data.data.map(track => this.normalizeTrack(track));
+        return data.data.map(track => this.formatTrack(track));
       }
 
       return [];
@@ -110,7 +110,7 @@ class DeezerProvider extends MusicProvider {
         const topData = await topResponse.json();
 
         if (topData.data) {
-          tracks.push(...topData.data.map(track => this.normalizeTrack(track)));
+          tracks.push(...topData.data.map(track => this.formatTrack(track)));
         }
       }
 
@@ -130,12 +130,57 @@ class DeezerProvider extends MusicProvider {
       const data = await response.json();
 
       if (data.data && data.data.length > 0) {
-        return data.data.map(track => this.normalizeTrack(track));
+        return data.data.map(track => this.formatTrack(track));
       }
 
       return [];
     } catch (error) {
       console.error('Deezer getTrendingTracks error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get related tracks for a given track ID
+   */
+  async getRelatedTracks(trackId) {
+    try {
+      // First get the track to find its artist
+      const track = await this.getTrackById(trackId);
+      if (!track || !track.artistId) {
+        return [];
+      }
+
+      // Get related tracks from the same artist and related artists
+      const [artistTopTracks, relatedArtists] = await Promise.allSettled([
+        fetch(`${this.baseUrl}/artist/${track.artistId}/top?limit=10`).then(r => r.json()),
+        fetch(`${this.baseUrl}/artist/${track.artistId}/related?limit=5`).then(r => r.json())
+      ]);
+
+      const tracks = [];
+
+      // Add artist's top tracks (excluding the seed track)
+      if (artistTopTracks.status === 'fulfilled' && artistTopTracks.value.data) {
+        tracks.push(...artistTopTracks.value.data
+          .filter(t => t.id.toString() !== trackId.toString())
+          .map(t => this.formatTrack(t))
+        );
+      }
+
+      // Add tracks from related artists
+      if (relatedArtists.status === 'fulfilled' && relatedArtists.value.data) {
+        for (const artist of relatedArtists.value.data.slice(0, 3)) {
+          const topResponse = await fetch(`${this.baseUrl}/artist/${artist.id}/top?limit=5`);
+          const topData = await topResponse.json();
+          if (topData.data) {
+            tracks.push(...topData.data.map(t => this.formatTrack(t)));
+          }
+        }
+      }
+
+      return tracks.slice(0, 25);
+    } catch (error) {
+      console.error('Deezer getRelatedTracks error:', error);
       return [];
     }
   }
@@ -149,7 +194,7 @@ class DeezerProvider extends MusicProvider {
       const data = await response.json();
 
       if (data.id) {
-        return this.normalizeTrack(data);
+        return this.formatTrack(data);
       }
 
       return null;
@@ -192,7 +237,7 @@ class DeezerProvider extends MusicProvider {
           const topData = await topResponse.json();
 
           if (topData.data) {
-            recommendations.push(...topData.data.map(track => this.normalizeTrack(track)));
+            recommendations.push(...topData.data.map(track => this.formatTrack(track)));
           }
 
           // Get related artists
@@ -205,7 +250,7 @@ class DeezerProvider extends MusicProvider {
               const relatedTopData = await relatedTopResponse.json();
 
               if (relatedTopData.data) {
-                recommendations.push(...relatedTopData.data.map(track => this.normalizeTrack(track)));
+                recommendations.push(...relatedTopData.data.map(track => this.formatTrack(track)));
               }
             }
           }

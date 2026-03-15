@@ -3,9 +3,9 @@ import './ModeSelector.css';
 
 const ModeSelector = ({ currentMode, onModeChange, hasEnoughData }) => {
   const modes = [
-    { id: 'recommendations', label: 'For You', requiresData: true },
-    { id: 'trending', label: 'Trending', requiresData: false },
-    { id: 'genre', label: 'Genre', requiresData: false }
+    { id: 'trending', label: 'Trending', subtitle: "What's hot right now", requiresData: false },
+    { id: 'recommendations', label: 'For You', subtitle: 'Based on your taste', requiresData: true },
+    { id: 'genre', label: 'Genre', subtitle: 'Dig by style', requiresData: false }
   ];
 
   return (
@@ -21,7 +21,8 @@ const ModeSelector = ({ currentMode, onModeChange, hasEnoughData }) => {
             onClick={() => !isDisabled && onModeChange(mode.id)}
             disabled={isDisabled}
           >
-            {mode.label}
+            <div className="mode-label">{mode.label}</div>
+            <div className="mode-subtitle">{mode.subtitle}</div>
             {isDisabled && <span className="lock-icon">🔒</span>}
           </button>
         );

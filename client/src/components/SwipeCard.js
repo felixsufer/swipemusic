@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import './SwipeCard.css';
 
-const SwipeCard = ({ track, onSwipe, isTop, showHint }) => {
+const SwipeCard = ({ track, onSwipe, isTop, showHint, mode }) => {
   const [hintVisible, setHintVisible] = useState(false);
   const controls = useAnimation();
 
@@ -59,6 +59,13 @@ const SwipeCard = ({ track, onSwipe, isTop, showHint }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getWhyLabel = () => {
+    if (mode === 'recommendations') return '✦ Similar to your likes';
+    if (mode === 'genre') return `✦ ${track.genre || 'Genre'}`;
+    if (mode === 'trending') return '✦ Trending';
+    return null;
+  };
+
   return (
     <motion.div
       className="swipe-card"
@@ -70,7 +77,19 @@ const SwipeCard = ({ track, onSwipe, isTop, showHint }) => {
       animate={controls}
       whileDrag={{ scale: 1.03 }}
     >
-      <div className="card-content" style={{ backgroundImage: `url(${track.albumCover})` }}>
+      <div className="card-content" style={{ backgroundImage: `url(${track.artwork || track.albumCover})` }}>
+        {/* Source badge */}
+        <div className="source-badge">{(track.source || 'deezer').toUpperCase()}</div>
+
+        {/* BPM chip */}
+        {track.bpm && (
+          <div className="bpm-chip">♩ {track.bpm} BPM</div>
+        )}
+
+        {/* Why label */}
+        {getWhyLabel() && (
+          <div className="why-label">{getWhyLabel()}</div>
+        )}
         {/* Color overlays for drag feedback */}
         <motion.div
           className="drag-overlay"
@@ -95,9 +114,6 @@ const SwipeCard = ({ track, onSwipe, isTop, showHint }) => {
           <div className="card-info">
             <h2 className="track-title">{track.title}</h2>
             <p className="track-artist">{track.artist}</p>
-            {track.duration && (
-              <span className="track-duration">{formatDuration(track.duration)}</span>
-            )}
           </div>
         </div>
       </div>

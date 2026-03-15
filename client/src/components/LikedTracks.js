@@ -1,44 +1,63 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './LikedTracks.css';
 
-const LikedTracks = ({ tracks, onClose, onUnlike }) => {
-  if (!tracks || tracks.length === 0) {
-    return (
-      <div className="liked-tracks-overlay">
-        <div className="liked-tracks-container">
-          <div className="liked-tracks-header">
-            <h2>Liked Tracks</h2>
-            <button className="close-button" onClick={onClose}>✕</button>
-          </div>
-          <div className="empty-liked">
-            <p>No liked tracks yet</p>
-            <p className="subtext">Start swiping right on tracks you love!</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike }) => {
+  const [activeTab, setActiveTab] = useState('liked');
+  const displayTracks = activeTab === 'liked' ? tracks : crateItems;
+  const isEmpty = (!tracks || tracks.length === 0) && (!crateItems || crateItems.length === 0);
 
   return (
-    <div className="liked-tracks-overlay" onClick={onClose}>
-      <div className="liked-tracks-container" onClick={(e) => e.stopPropagation()}>
-        <div className="liked-tracks-header">
-          <h2>Liked Tracks ({tracks.length})</h2>
-          <button className="close-button" onClick={onClose}>✕</button>
-        </div>
+    <div className="liked-tracks-container-fullscreen">
+      <div className="liked-tracks-header">
+        <h2>Crates</h2>
+      </div>
 
+      <div className="crate-tabs">
+        <button
+          className={`crate-tab ${activeTab === 'liked' ? 'active' : ''}`}
+          onClick={() => setActiveTab('liked')}
+        >
+          Liked ({tracks?.length || 0})
+        </button>
+        <button
+          className={`crate-tab ${activeTab === 'crate' ? 'active' : ''}`}
+          onClick={() => setActiveTab('crate')}
+        >
+          Saved to Crate ({crateItems?.length || 0})
+        </button>
+      </div>
+
+      {displayTracks.length === 0 ? (
+        <div className="empty-liked">
+          <p>
+            {activeTab === 'liked'
+              ? 'No liked tracks yet'
+              : 'No tracks saved to crate'}
+          </p>
+          <p className="subtext">
+            {activeTab === 'liked'
+              ? 'Start swiping right on tracks you love!'
+              : 'Use the 🔖 button to save tracks for later'}
+          </p>
+        </div>
+      ) : (
         <div className="liked-tracks-grid">
-          {tracks.map((track) => (
+          {displayTracks.map((track) => (
             <div key={track.id} className="liked-track-card">
               <div className="track-card-image">
-                <img src={track.albumCoverMedium || track.albumCover} alt={track.album} />
-                <button
-                  className="unlike-button"
-                  onClick={() => onUnlike(track.id)}
-                  title="Remove from liked"
-                >
-                  ♥
-                </button>
+                <img src={track.artworkSmall || track.artwork || track.albumCoverMedium || track.albumCover} alt={track.album} />
+                {activeTab === 'liked' && (
+                  <button
+                    className="unlike-button"
+                    onClick={() => onUnlike(track.id)}
+                    title="Remove from liked"
+                  >
+                    ♥
+                  </button>
+                )}
+                <div className="track-source-badge">
+                  {(track.source || 'deezer').toUpperCase()}
+                </div>
               </div>
               <div className="track-card-info">
                 <div className="track-card-title">{track.title}</div>
@@ -46,11 +65,19 @@ const LikedTracks = ({ tracks, onClose, onUnlike }) => {
                 {track.genre && (
                   <div className="track-card-genre">{track.genre}</div>
                 )}
+                {track.deepLink && (
+                  <button
+                    className="track-open-button"
+                    onClick={() => window.open(track.deepLink, '_blank')}
+                  >
+                    Open
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

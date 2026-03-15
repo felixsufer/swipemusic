@@ -4,10 +4,11 @@ import './SwipeStack.css';
 
 const HINT_SHOWN_KEY = 'swipemusic_hint_shown';
 
-const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUndo }) => {
+const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUndo, onSaveToCrate, onBlacklist, currentMode }) => {
   const [swipedCount, setSwipedCount] = useState(0);
   const [lastSwiped, setLastSwiped] = useState(null);
   const [showHint, setShowHint] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Check if hint should be shown
   useEffect(() => {
@@ -65,6 +66,36 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
     const currentTrack = tracks[swipedCount];
     handleSwipe('left', currentTrack);
   }, [swipedCount, tracks, handleSwipe]);
+
+  const handleSaveToCrate = useCallback(() => {
+    if (swipedCount >= tracks.length) return;
+    const currentTrack = tracks[swipedCount];
+    if (onSaveToCrate) {
+      onSaveToCrate(currentTrack);
+    }
+  }, [swipedCount, tracks, onSaveToCrate]);
+
+  const handleBlacklist = useCallback(() => {
+    if (swipedCount >= tracks.length) return;
+    const currentTrack = tracks[swipedCount];
+    if (onBlacklist) {
+      onBlacklist(currentTrack);
+    }
+    // Also swipe away the card
+    handleSwipe('left', currentTrack);
+    setShowMoreMenu(false);
+  }, [swipedCount, tracks, onBlacklist, handleSwipe]);
+
+  const handleOpenInSource = useCallback(() => {
+    if (swipedCount >= tracks.length) return;
+    const currentTrack = tracks[swipedCount];
+    if (currentTrack.deepLink) {
+      window.open(currentTrack.deepLink, '_blank');
+    } else {
+      alert('No external link available for this track');
+    }
+    setShowMoreMenu(false);
+  }, [swipedCount, tracks]);
 
   // Keyboard support
   useEffect(() => {
@@ -134,6 +165,7 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
                 onSwipe={handleSwipe}
                 isTop={index === 0}
                 showHint={showHint && index === 0}
+                mode={currentMode}
               />
             </div>
           );
@@ -143,20 +175,18 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
       {/* Action buttons below the stack */}
       <div className="action-buttons">
         <button
-          className="action-btn btn-nope"
+          className="action-btn btn-skip"
           onClick={handleButtonSkip}
           aria-label="Skip track"
         >
           ✕
         </button>
         <button
-          className="action-btn btn-undo"
-          onClick={handleUndoClick}
-          disabled={!lastSwiped || swipedCount === 0}
-          aria-label="Undo last swipe"
-          style={{ opacity: (!lastSwiped || swipedCount === 0) ? 0.3 : 1 }}
+          className="action-btn btn-crate"
+          onClick={handleSaveToCrate}
+          aria-label="Save to crate"
         >
-          ↩
+          🔖
         </button>
         <button
           className="action-btn btn-like"
@@ -165,6 +195,21 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
         >
           ♥
         </button>
+        <div className="more-menu-container">
+          <button
+            className="action-btn btn-more"
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            aria-label="More options"
+          >
+            ···
+          </button>
+          {showMoreMenu && (
+            <div className="more-menu">
+              <button onClick={handleOpenInSource}>Open in source</button>
+              <button onClick={handleBlacklist} className="danger">Not for me / Blacklist</button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

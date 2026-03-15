@@ -24,5 +24,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`SwipeMusic server running on port ${PORT}`);
+  console.log(`SwipeSound server running on port ${PORT}`);
 });
