@@ -105,15 +105,15 @@ class DeezerProvider extends MusicProvider {
     try {
       const genreLower = genre.toLowerCase();
 
-      // Search-based genres (no Deezer genre ID)
-      if (this.genreSearchTerms[genreLower]) {
-        return this.search(this.genreSearchTerms[genreLower]);
+      // Use curated artist seeds if available — much more accurate than keyword or Deezer charts
+      if (this.genreArtistSeeds[genreLower]) {
+        return this.getTracksByGenreSeeds(genreLower);
       }
 
       const genreId = this.genres[genreLower] || genre;
 
       // First try to get artists from the genre
-      const artistsResponse = await fetch(`${this.baseUrl}/genre/${genreId}/artists?limit=10`);
+      const artistsResponse = await fetch(`${this.baseUrl}/genre/${genreId}/artists?limit=10`, { timeout: 6000 });
       const artistsData = await artistsResponse.json();
 
       if (!artistsData.data || artistsData.data.length === 0) {
