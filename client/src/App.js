@@ -144,8 +144,8 @@ function App() {
   };
 
   const handleNeedMore = () => {
-    // Load more tracks when running low
-    if (!isLoading && tracks.length < 10) {
+    // Load more tracks when running low — always fetch when called (SwipeStack decides when to call)
+    if (!isLoading) {
       fetchTracks(true);
     }
   };

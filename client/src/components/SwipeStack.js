@@ -127,12 +127,24 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
     setLastSwiped(null);
   };
 
-  if (tracks.length === 0 || swipedCount >= tracks.length) {
+  if (tracks.length === 0) {
     return (
       <div className="swipe-stack-container">
         <div className="empty-stack">
           <div className="skeleton-card"></div>
           <p>Loading tracks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (swipedCount >= tracks.length) {
+    return (
+      <div className="swipe-stack-container">
+        <div className="empty-stack">
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎵</div>
+          <p style={{ fontWeight: 600, marginBottom: '8px' }}>You're all caught up</p>
+          <p style={{ fontSize: '14px', opacity: 0.6, marginBottom: '20px' }}>Loading more tracks...</p>
         </div>
       </div>
     );

@@ -28,19 +28,29 @@ class DeezerProvider extends MusicProvider {
       dubstep: null,
       dnb: null
     };
-    // Search terms for genres without Deezer IDs
-    this.genreSearchTerms = {
-      bass: 'bass music',
-      dubstep: 'dubstep',
-      dnb: 'drum and bass',
-      techno: 'techno',
-      house: 'house music',
-      trance: 'trance',
-      jungle: 'jungle music',
-      breaks: 'breakbeat',
-      garage: 'uk garage',
-      ambient: 'ambient electronic',
-      industrial: 'industrial music'
+    // Artist seeds per genre — searched randomly to get real genre tracks
+    // Much more accurate than searching by genre keyword
+    this.genreArtistSeeds = {
+      techno: ['Charlotte de Witte', 'Richie Hawtin', 'Adam Beyer', 'Amelie Lens', 'FJAAK', 'Svreca', 'Dax J', 'Rebekah'],
+      house: ['Disclosure', 'MK', 'Duke Dumont', 'Chris Lake', 'Jamie Jones', 'Frankie Knuckles', 'Larry Heard', 'Kerri Chandler'],
+      deephouse: ['Larry Heard', 'Kerri Chandler', 'Gene Hunt', 'Moodymann', 'Theo Parrish', 'Floating Points'],
+      dubstep: ['Skrillex', 'Excision', 'Flux Pavilion', 'Zomboy', 'Kill the Noise', 'Benga', 'Digital Mystikz'],
+      dnb: ['Chase & Status', 'Pendulum', 'Noisia', 'High Contrast', 'LTJ Bukem', 'Goldie', 'Andy C', 'Shy FX'],
+      trance: ['Armin van Buuren', 'Paul van Dyk', 'Ferry Corsten', 'Above & Beyond', 'Tiësto', 'Sasha', 'John Digweed'],
+      electronic: ['Four Tet', 'Aphex Twin', 'Burial', 'Bonobo', 'Jon Hopkins', 'Moderat', 'Floating Points'],
+      jungle: ['Goldie', 'LTJ Bukem', '4hero', 'Shy FX', 'Roni Size', 'Photek'],
+      garage: ['Craig David', 'MJ Cole', 'Todd Edwards', 'El-B', 'Zed Bias'],
+      ambient: ['Brian Eno', 'The Orb', 'Moby', 'Boards of Canada', 'Stars of the Lid', 'Gas'],
+      breakbeat: ['The Prodigy', 'The Chemical Brothers', 'Fatboy Slim', 'Daft Punk', 'Basement Jaxx'],
+      industrial: ['Nine Inch Nails', 'Skinny Puppy', 'Front 242', 'Coil', 'Einstürzende Neubauten'],
+      bass: ['Skream', 'Benga', 'Digital Mystikz', 'Mala', 'Loefah', 'Coki'],
+      dance: ['David Guetta', 'Calvin Harris', 'Avicii', 'Martin Garrix', 'Kygo', 'Swedish House Mafia'],
+      hiphop: ['Kendrick Lamar', 'J. Cole', 'Drake', 'Travis Scott', 'Tyler the Creator', 'Joey Bada$$'],
+      rap: ['Kendrick Lamar', 'Jay-Z', 'Nas', 'Wu-Tang Clan', 'Rakim', 'Big L'],
+      pop: ['Dua Lipa', 'The Weeknd', 'Billie Eilish', 'Harry Styles', 'Taylor Swift', 'Ariana Grande'],
+      rock: ['Radiohead', 'Arctic Monkeys', 'The Strokes', 'Tame Impala', 'Arcade Fire', 'LCD Soundsystem'],
+      metal: ['Metallica', 'Slayer', 'Mastodon', 'Gojira', 'Converge', 'Neurosis'],
+      rnb: ['Frank Ocean', 'SZA', 'Daniel Caesar', 'H.E.R.', 'Solange', 'Blood Orange']
     };
   }
 
@@ -195,6 +205,33 @@ class DeezerProvider extends MusicProvider {
       return tracks.slice(0, 25);
     } catch (error) {
       console.error('Deezer getRelatedTracks error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get tracks by genre using artist seeds — much more accurate than keyword search
+   * Picks 2-3 random artists from the seed list and fetches their top tracks
+   */
+  async getTracksByGenreSeeds(genre) {
+    const seeds = this.genreArtistSeeds[genre.toLowerCase()];
+    if (!seeds || seeds.length === 0) return [];
+
+    try {
+      // Pick 3 random artists from seeds
+      const shuffled = seeds.sort(() => 0.5 - Math.random());
+      const picked = shuffled.slice(0, 3);
+
+      const results = await Promise.allSettled(
+        picked.map(artist => this.search(artist))
+      );
+
+      return results
+        .filter(r => r.status === 'fulfilled')
+        .flatMap(r => r.value)
+        .filter(t => t.preview); // only tracks with previews
+    } catch (err) {
+      console.error('getTracksByGenreSeeds error:', err.message);
       return [];
     }
   }

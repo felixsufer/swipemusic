@@ -22,7 +22,9 @@ const ModeSelector = ({ currentMode, onModeChange, hasEnoughData }) => {
             disabled={isDisabled}
           >
             <div className="mode-label">{mode.label}</div>
-            <div className="mode-subtitle">{mode.subtitle}</div>
+            <div className="mode-subtitle">
+              {isDisabled ? 'Like 5 tracks to unlock' : mode.subtitle}
+            </div>
             {isDisabled && <span className="lock-icon">🔒</span>}
           </button>
         );
