@@ -32,7 +32,15 @@ class DeezerProvider extends MusicProvider {
     this.genreSearchTerms = {
       bass: 'bass music',
       dubstep: 'dubstep',
-      dnb: 'drum and bass'
+      dnb: 'drum and bass',
+      techno: 'techno',
+      house: 'house music',
+      trance: 'trance',
+      jungle: 'jungle music',
+      breaks: 'breakbeat',
+      garage: 'uk garage',
+      ambient: 'ambient electronic',
+      industrial: 'industrial music'
     };
   }
 
