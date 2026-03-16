@@ -246,6 +246,14 @@
   transform: rotate(10deg);
 }
 
+.stamp-save {
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-5deg);
+  color: #6366f1;
+  border-color: #6366f1;
+}
+
 .action-buttons {
   display: flex;
   gap: 24px;

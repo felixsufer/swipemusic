@@ -50,10 +50,12 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
 
     if (direction === 'right') {
       onLike(track);
+    } else if (direction === 'up') {
+      if (onSaveToCrate) onSaveToCrate(track);
     } else {
       onSkip(track);
     }
-  }, [swipedCount, tracks.length, onNeedMore, onLike, onSkip]);
+  }, [swipedCount, tracks.length, onNeedMore, onLike, onSkip, onSaveToCrate]);
 
   const handleButtonLike = useCallback(() => {
     if (swipedCount >= tracks.length) return;
@@ -108,6 +110,9 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         handleButtonSkip();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleSaveToCrate();
       }
     };
 
