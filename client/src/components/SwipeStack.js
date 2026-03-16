@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SwipeCard from './SwipeCard';
 import './SwipeStack.css';
 
 const HINT_SHOWN_KEY = 'swipemusic_hint_shown';
+const API_BASE = '/api';
 
 const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUndo, onSaveToCrate, onBlacklist, currentMode }) => {
   const [swipedCount, setSwipedCount] = useState(0);
   const [lastSwiped, setLastSwiped] = useState(null);
   const [showHint, setShowHint] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // BPM cache: trackId -> bpm value (fetched lazily for top card)
+  const [bpmCache, setBpmCache] = useState({});
+  const fetchingBpm = useRef(new Set());
 
   // Check if hint should be shown
   useEffect(() => {
@@ -28,6 +32,50 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
       }
     }
   }, [swipedCount, tracks, onTopCardChange]);
+
+  // Lazy BPM fetch: when top card changes, fetch BPM if not cached
+  useEffect(() => {
+    if (tracks.length === 0 || swipedCount >= tracks.length) return;
+    const topTrack = tracks[swipedCount];
+    if (!topTrack) return;
+    const trackId = topTrack.id;
+    // Already have BPM from feed data or cache
+    if (topTrack.bpm || bpmCache[trackId] !== undefined) return;
+    // Already fetching
+    if (fetchingBpm.current.has(trackId)) return;
+
+    const sourceId = topTrack.sourceId || (trackId.includes(':') ? trackId.split(':')[1] : trackId);
+    if (!sourceId) return;
+
+    fetchingBpm.current.add(trackId);
+    fetch(`${API_BASE}/track/${sourceId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.track) {
+          setBpmCache(prev => ({ ...prev, [trackId]: data.track.bpm || null }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => fetchingBpm.current.delete(trackId));
+
+    // Pre-fetch BPM for next card (card at index 1) so it's ready when user swipes
+    const nextTrack = tracks[swipedCount + 1];
+    if (nextTrack && !nextTrack.bpm && bpmCache[nextTrack.id] === undefined && !fetchingBpm.current.has(nextTrack.id)) {
+      const nextSourceId = nextTrack.sourceId || (nextTrack.id.includes(':') ? nextTrack.id.split(':')[1] : nextTrack.id);
+      if (nextSourceId) {
+        fetchingBpm.current.add(nextTrack.id);
+        fetch(`${API_BASE}/track/${nextSourceId}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && data.track) {
+              setBpmCache(prev => ({ ...prev, [nextTrack.id]: data.track.bpm || null }));
+            }
+          })
+          .catch(() => {})
+          .finally(() => fetchingBpm.current.delete(nextTrack.id));
+      }
+    }
+  }, [swipedCount, tracks, bpmCache]);
 
   const visibleTracks = tracks.slice(swipedCount);
   const displayTracks = visibleTracks.slice(0, 3); // render top 3 for perf
@@ -178,7 +226,7 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
               }}
             >
               <SwipeCard
-                track={track}
+                track={(index === 0 || index === 1) ? { ...track, bpm: track.bpm || bpmCache[track.id] || null } : track}
                 onSwipe={handleSwipe}
                 isTop={index === 0}
                 showHint={showHint && index === 0}

@@ -25,6 +25,9 @@ router.get('/tracks', async (req, res) => {
       mode = 'trending',
       genre,
       likedTrackIds,
+      likedArtists,
+      sessionLikedGenres,
+      sessionLikedArtists,
       skippedIds,
       blacklistedIds,
       seenIds,
@@ -34,27 +37,31 @@ router.get('/tracks', async (req, res) => {
 
     // Parse comma-separated params
     const parsedLikedIds = likedTrackIds ? likedTrackIds.split(',').filter(Boolean) : [];
+    const parsedLikedArtists = likedArtists ? decodeURIComponent(likedArtists).split(',').filter(Boolean) : [];
+    const parsedSessionArtists = sessionLikedArtists ? decodeURIComponent(sessionLikedArtists).split(',').filter(Boolean) : [];
     const parsedSkippedIds = skippedIds ? skippedIds.split(',').filter(Boolean) : [];
     const parsedBlacklistedIds = blacklistedIds ? blacklistedIds.split(',').filter(Boolean) : [];
     const parsedSeenIds = seenIds ? seenIds.split(',').filter(Boolean) : [];
 
-    // Parse likedGenres JSON
+    // Parse JSON objects
     let parsedLikedGenres = {};
+    let parsedSessionGenres = {};
+
     if (likedGenres) {
-      try {
-        parsedLikedGenres = JSON.parse(likedGenres);
-      } catch (e) {
-        console.error('Error parsing likedGenres:', e);
-      }
+      try { parsedLikedGenres = JSON.parse(decodeURIComponent(likedGenres)); } catch (e) {}
+    }
+    if (sessionLikedGenres) {
+      try { parsedSessionGenres = JSON.parse(decodeURIComponent(sessionLikedGenres)); } catch (e) {}
     }
 
-    // Validate limit
     const parsedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
 
-    // Generate feed using FeedEngine
     const tracks = await FeedEngine.generateFeed(mode, {
       genre,
       likedTrackIds: parsedLikedIds,
+      likedArtists: parsedLikedArtists,
+      sessionLikedGenres: parsedSessionGenres,
+      sessionLikedArtists: parsedSessionArtists,
       skippedIds: parsedSkippedIds,
       blacklistedIds: parsedBlacklistedIds,
       seenIds: parsedSeenIds,

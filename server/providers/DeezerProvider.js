@@ -31,26 +31,44 @@ class DeezerProvider extends MusicProvider {
     // Artist seeds per genre — searched randomly to get real genre tracks
     // Much more accurate than searching by genre keyword
     this.genreArtistSeeds = {
-      techno: ['Charlotte de Witte', 'Richie Hawtin', 'Adam Beyer', 'Amelie Lens', 'FJAAK', 'Svreca', 'Dax J', 'Rebekah'],
-      house: ['Disclosure', 'MK', 'Duke Dumont', 'Chris Lake', 'Jamie Jones', 'Frankie Knuckles', 'Larry Heard', 'Kerri Chandler'],
-      deephouse: ['Larry Heard', 'Kerri Chandler', 'Gene Hunt', 'Moodymann', 'Theo Parrish', 'Floating Points'],
-      dubstep: ['Skrillex', 'Excision', 'Flux Pavilion', 'Zomboy', 'Kill the Noise', 'Benga', 'Digital Mystikz'],
-      dnb: ['Chase & Status', 'Pendulum', 'Noisia', 'High Contrast', 'LTJ Bukem', 'Goldie', 'Andy C', 'Shy FX'],
-      trance: ['Armin van Buuren', 'Paul van Dyk', 'Ferry Corsten', 'Above & Beyond', 'Tiësto', 'Sasha', 'John Digweed'],
-      electronic: ['Four Tet', 'Aphex Twin', 'Burial', 'Bonobo', 'Jon Hopkins', 'Moderat', 'Floating Points'],
-      jungle: ['Goldie', 'LTJ Bukem', '4hero', 'Shy FX', 'Roni Size', 'Photek'],
-      garage: ['Craig David', 'MJ Cole', 'Todd Edwards', 'El-B', 'Zed Bias'],
-      ambient: ['Brian Eno', 'The Orb', 'Moby', 'Boards of Canada', 'Stars of the Lid', 'Gas'],
-      breakbeat: ['The Prodigy', 'The Chemical Brothers', 'Fatboy Slim', 'Daft Punk', 'Basement Jaxx'],
-      industrial: ['Nine Inch Nails', 'Skinny Puppy', 'Front 242', 'Coil', 'Einstürzende Neubauten'],
-      bass: ['Skream', 'Benga', 'Digital Mystikz', 'Mala', 'Loefah', 'Coki'],
-      dance: ['David Guetta', 'Calvin Harris', 'Avicii', 'Martin Garrix', 'Kygo', 'Swedish House Mafia'],
-      hiphop: ['Kendrick Lamar', 'J. Cole', 'Drake', 'Travis Scott', 'Tyler the Creator', 'Joey Bada$$'],
-      rap: ['Kendrick Lamar', 'Jay-Z', 'Nas', 'Wu-Tang Clan', 'Rakim', 'Big L'],
-      pop: ['Dua Lipa', 'The Weeknd', 'Billie Eilish', 'Harry Styles', 'Taylor Swift', 'Ariana Grande'],
-      rock: ['Radiohead', 'Arctic Monkeys', 'The Strokes', 'Tame Impala', 'Arcade Fire', 'LCD Soundsystem'],
-      metal: ['Metallica', 'Slayer', 'Mastodon', 'Gojira', 'Converge', 'Neurosis'],
-      rnb: ['Frank Ocean', 'SZA', 'Daniel Caesar', 'H.E.R.', 'Solange', 'Blood Orange']
+      // Electronic / Club
+      techno: ['Charlotte de Witte', 'Richie Hawtin', 'Adam Beyer', 'Amelie Lens', 'FJAAK', 'Svreca', 'Dax J', 'Rebekah', 'Nina Kraviz', 'Blawan', 'Paula Temple', 'Ancient Methods', 'DVS1', 'Surgeon', 'Ben Klock'],
+      house: ['Disclosure', 'MK', 'Duke Dumont', 'Chris Lake', 'Jamie Jones', 'Frankie Knuckles', 'Larry Heard', 'Kerri Chandler', 'Marshall Jefferson', 'Ten City', 'Larry Levan', 'Danny Tenaglia', 'Mr. Fingers', 'Armand Van Helden', 'Dennis Ferrer'],
+      deephouse: ['Larry Heard', 'Kerri Chandler', 'Moodymann', 'Theo Parrish', 'Floating Points', 'Move D', 'Dj Sprinkles', 'Miguel Migs', 'Osunlade', 'Jimpster', 'Recondite', 'Kyle Hall', 'Tony Allen'],
+      techhouse: ['Chris Lake', 'Fisher', 'Cause & Affect', 'Patrick Topping', 'Green Velvet', 'Skream', 'Hot Since 82', 'Secondcity', 'Doorly', 'Catz N Dogz'],
+      afrohouse: ['Black Coffee', 'Da Capo', 'Culoe De Song', 'Enoo Napa', 'Themba', 'Shimza', 'Atmos Blaq', 'Dj Merlon', 'dj kent', 'Djeff'],
+      melodictechno: ['Anyma', 'Tale Of Us', 'Massano', 'Afterlife', 'Innellea', 'WhoMadeWho', 'Agents of Time', 'Camelphat', 'Mind Against', 'Adriatique'],
+      minimal: ['Ricardo Villalobos', 'Richie Hawtin', 'Zip', 'Move D', 'Losoul', 'Robert Hood', 'Plastikman', 'Speedy J', 'Matthew Dear', 'Marc Houle'],
+      dubstep: ['Skrillex', 'Excision', 'Flux Pavilion', 'Zomboy', 'Kill the Noise', 'Benga', 'Digital Mystikz', 'Skream', 'Mala', 'Coki', 'Datsik', 'Doctor P', 'Bar9'],
+      dnb: ['Chase & Status', 'Pendulum', 'Noisia', 'High Contrast', 'LTJ Bukem', 'Goldie', 'Andy C', 'Shy FX', 'Sub Focus', 'Netsky', 'Camo & Krooked', 'Calibre', 'Roni Size', 'dBridge'],
+      halftime: ['Ivy Lab', 'Amon Tobin', 'Koan Sound', 'Shades', 'Spor', 'Optiv', 'Current Value', 'Audio'],
+      trance: ['Armin van Buuren', 'Paul van Dyk', 'Ferry Corsten', 'Above & Beyond', 'Tiësto', 'Sasha', 'John Digweed', 'Infected Mushroom', 'Cosmic Gate', 'Aly & Fila', 'Gareth Emery', 'Markus Schulz'],
+      psytrance: ['Infected Mushroom', 'Astrix', 'Vini Vici', 'Neelix', 'Ace Ventura', 'Vertical Mode', 'Liquid Soul', 'Tristan', 'Shpongle', 'Atmos'],
+      electronic: ['Four Tet', 'Aphex Twin', 'Burial', 'Bonobo', 'Jon Hopkins', 'Moderat', 'Floating Points', 'James Blake', 'Mount Kimbie', 'The XX', 'Nicolas Jaar', 'Lone'],
+      jungle: ['Goldie', 'LTJ Bukem', '4hero', 'Shy FX', 'Roni Size', 'Photek', 'Grooverider', 'Fabio', 'Congo Natty', 'Dillinja'],
+      garage: ['Craig David', 'MJ Cole', 'Todd Edwards', 'El-B', 'Zed Bias', 'So Solid Crew', 'Artful Dodger', 'Oxide & Neutrino', 'Pay As U Go'],
+      ukgarage: ['Craig David', 'MJ Cole', 'Todd Edwards', 'El-B', 'Zed Bias', 'Artful Dodger', 'Oxide & Neutrino'],
+      ambient: ['Brian Eno', 'The Orb', 'Moby', 'Boards of Canada', 'Stars of the Lid', 'Gas', 'Tim Hecker', 'William Basinski', 'Ólafur Arnalds', 'Max Richter'],
+      breakbeat: ['The Prodigy', 'The Chemical Brothers', 'Fatboy Slim', 'Daft Punk', 'Basement Jaxx', 'Kraftwerk', 'Leftfield', 'Apollo 440', 'BT'],
+      industrial: ['Nine Inch Nails', 'Skinny Puppy', 'Front 242', 'Coil', 'Einstürzende Neubauten', 'HEALTH', 'Godflesh', 'Ministry', 'KMFDM'],
+      bass: ['Skream', 'Benga', 'Digital Mystikz', 'Mala', 'Loefah', 'Coki', 'Truth', 'Goth-Trad', 'Tes La Rok'],
+      dance: ['David Guetta', 'Calvin Harris', 'Avicii', 'Martin Garrix', 'Kygo', 'Swedish House Mafia', 'Deadmau5', 'Knife Party', 'Alesso', 'Zedd'],
+      edm: ['David Guetta', 'Calvin Harris', 'Martin Garrix', 'Marshmello', 'Diplo', 'Skrillex', 'Zedd', 'Hardwell', 'Tiësto', 'Alesso'],
+      // Hip-hop / R&B
+      hiphop: ['Kendrick Lamar', 'J. Cole', 'Drake', 'Travis Scott', 'Tyler the Creator', 'Joey Bada$$', 'Earl Sweatshirt', 'Isaiah Rashad', 'Freddie Gibbs', 'Pusha T'],
+      rap: ['Kendrick Lamar', 'Jay-Z', 'Nas', 'Wu-Tang Clan', 'Rakim', 'Big L', 'MF DOOM', 'Gang Starr', 'EPMD', 'Pete Rock'],
+      trap: ['Travis Scott', 'Future', 'Young Thug', 'Playboi Carti', '21 Savage', 'Gunna', 'Roddy Ricch', 'Lil Baby'],
+      rnb: ['Frank Ocean', 'SZA', 'Daniel Caesar', 'H.E.R.', 'Solange', 'Blood Orange', 'Brent Faiyaz', 'Snoh Aalegra', 'Lucky Daye', 'Cleo Sol'],
+      soul: ['Marvin Gaye', 'Stevie Wonder', 'Curtis Mayfield', 'Al Green', 'Erykah Badu', "D'Angelo", 'Lauryn Hill', 'Maxwell'],
+      // Other
+      pop: ['Dua Lipa', 'The Weeknd', 'Billie Eilish', 'Harry Styles', 'Taylor Swift', 'Ariana Grande', 'Olivia Rodrigo', 'Post Malone', 'Lana Del Rey'],
+      rock: ['Radiohead', 'Arctic Monkeys', 'The Strokes', 'Tame Impala', 'Arcade Fire', 'LCD Soundsystem', 'Nick Cave', 'PJ Harvey', 'Interpol'],
+      metal: ['Metallica', 'Slayer', 'Mastodon', 'Gojira', 'Converge', 'Neurosis', 'Deafheaven', 'Code Orange', 'Full of Hell'],
+      jazz: ['Miles Davis', 'John Coltrane', 'Herbie Hancock', 'Thelonious Monk', 'Bill Evans', 'Charles Mingus', 'Wayne Shorter', 'Kamasi Washington'],
+      classical: ['Johann Sebastian Bach', 'Ludwig van Beethoven', 'Wolfgang Amadeus Mozart', 'Frédéric Chopin', 'Claude Debussy', 'Philip Glass'],
+      latin: ['Bad Bunny', 'J Balvin', 'Rosalía', 'Maluma', 'Ozuna', 'Rauw Alejandro', 'Daddy Yankee'],
+      reggae: ['Bob Marley', 'Peter Tosh', 'Burning Spear', 'Lee Scratch Perry', 'Toots and the Maytals', 'Steel Pulse', 'Sizzla'],
+      afrobeats: ['Burna Boy', 'Wizkid', 'Davido', 'Tems', 'Tiwa Savage', 'Yemi Alade', 'Mr Eazi', 'Fireboy DML']
     };
   }
 
@@ -69,7 +87,8 @@ class DeezerProvider extends MusicProvider {
       genre: track.genre?.name || null,
       genre_name: track.genre?.name || null,
       rank: track.rank,
-      duration: track.duration
+      duration: track.duration,
+      bpm: track.bpm || null
     }, 'deezer');
   }
 

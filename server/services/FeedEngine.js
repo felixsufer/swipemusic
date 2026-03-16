@@ -8,14 +8,12 @@ const lastfm = new LastFmProvider();
 class FeedEngine {
   // Build candidate pool based on mode
   async buildCandidatePool(mode, options = {}) {
-    const { genre, likedTrackIds = [], likedArtists = [], limit = 50 } = options;
+    const { genre, likedTrackIds = [], likedArtists = [], limit = 80 } = options;
     let candidates = [];
 
     if (mode === "trending") {
       candidates = await deezer.getTrendingTracks(limit);
     } else if (mode === "genre" && genre) {
-      // Use multiple search strategies and merge results
-      // Last.fm gives accurate genre tags; Deezer gives previews
       const [deezerTracks, lastfmTracks] = await Promise.allSettled([
         deezer.getTracksByGenre(genre, 0),
         lastfm.getTopTracksByTag(genre, 30)
@@ -23,9 +21,9 @@ class FeedEngine {
       const deezerResults = deezerTracks.status === "fulfilled" ? deezerTracks.value : [];
       const lastfmResults = lastfmTracks.status === "fulfilled" ? lastfmTracks.value : [];
 
-      // For Last.fm tracks without previews, try to find on Deezer
+      // Enrich Last.fm tracks without previews via Deezer cross-search
       const enriched = await Promise.allSettled(
-        lastfmResults.filter(t => !t.preview).slice(0, 10).map(t =>
+        lastfmResults.filter(t => !t.preview).slice(0, 15).map(t =>
           deezer.search(`${t.artist} ${t.title}`).then(r => r[0] || null)
         )
       );
@@ -34,30 +32,42 @@ class FeedEngine {
         .map(r => r.value);
 
       candidates = [...deezerResults, ...enrichedTracks];
-      // If still empty, fallback to broader search
       if (candidates.length === 0) {
         candidates = await deezer.search(genre);
       }
-    } else if (mode === "recommendations" && likedTrackIds.length > 0) {
-      // Use last 3 liked tracks to seed similarity
-      const seedTracks = likedTrackIds.slice(-3);
-      const similarArrays = await Promise.allSettled(
-        seedTracks.map(id => {
-          // Extract the actual Deezer ID from our compound ID format (deezer:123 -> 123)
-          const deezerId = id.includes(':') ? id.split(':')[1] : id;
-          return deezer.getRelatedTracks(deezerId);
-        })
-      );
-      candidates = similarArrays
-        .filter(r => r.status === "fulfilled")
-        .flatMap(r => r.value);
-      // Fallback to trending if not enough
+    } else if (mode === "recommendations") {
+      if (likedTrackIds.length > 0) {
+        // Use last 5 liked tracks as seeds (more signal = better recs)
+        const seedTracks = likedTrackIds.slice(-5);
+        const similarArrays = await Promise.allSettled(
+          seedTracks.map(id => {
+            const deezerId = id.includes(':') ? id.split(':')[1] : id;
+            return deezer.getRelatedTracks(deezerId);
+          })
+        );
+        candidates = similarArrays
+          .filter(r => r.status === "fulfilled")
+          .flatMap(r => r.value);
+      }
+
+      // Also pull tracks from liked artists for better coverage
+      if (likedArtists.length > 0) {
+        const artistSeeds = likedArtists.slice(0, 5);
+        const artistTracks = await Promise.allSettled(
+          artistSeeds.map(artist => deezer.search(artist).then(r => r.slice(0, 10)))
+        );
+        const fromArtists = artistTracks
+          .filter(r => r.status === "fulfilled")
+          .flatMap(r => r.value);
+        candidates = [...candidates, ...fromArtists];
+      }
+
+      // Fallback to trending if not enough data
       if (candidates.length < 10) {
         const trending = await deezer.getTrendingTracks(30);
         candidates = [...candidates, ...trending];
       }
     } else {
-      // Default: trending
       candidates = await deezer.getTrendingTracks(limit);
     }
 
@@ -67,60 +77,128 @@ class FeedEngine {
   // Hard filter: remove seen, liked, skipped, blacklisted
   hardFilter(candidates, { seenIds = [], likedIds = [], skippedIds = [], blacklistedIds = [] }) {
     const blocked = new Set([...seenIds, ...likedIds, ...skippedIds, ...blacklistedIds]);
-    return candidates.filter(t => !blocked.has(t.id) && !blocked.has(t.sourceId));
+    return candidates.filter(t => t && !blocked.has(t.id) && !blocked.has(t.sourceId));
   }
 
-  // Artist diversity: max 1 track per artist per window
+  // Artist diversity: max 2 tracks per artist, max 1 per album
   applyArtistDiversity(candidates) {
-    const seenArtists = new Set();
+    const artistCount = {};
+    const seenAlbums = new Set();
     const result = [];
     const overflow = [];
+
     for (const track of candidates) {
-      const artist = (track.artist || "").toLowerCase();
-      if (!seenArtists.has(artist)) {
-        seenArtists.add(artist);
+      const artist = (track.artist || "unknown").toLowerCase();
+      const albumKey = `${artist}::${(track.album || "").toLowerCase()}`;
+      const count = artistCount[artist] || 0;
+
+      if (count < 2 && !seenAlbums.has(albumKey)) {
+        artistCount[artist] = count + 1;
+        if (track.album) seenAlbums.add(albumKey);
         result.push(track);
       } else {
         overflow.push(track);
       }
     }
-    // Add overflow at end so we don't lose tracks if pool is small
     return [...result, ...overflow];
   }
 
-  // Dedup by sourceId
+  // Dedup by track ID
   dedup(candidates) {
     const seen = new Set();
     return candidates.filter(t => {
+      if (!t) return false;
       const key = t.id || t.sourceId;
-      if (seen.has(key)) return false;
+      if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });
   }
 
-  // Score tracks
-  score(candidates, { likedGenres = {}, mode = "trending" }) {
+  // Score tracks with weighted randomization so feed varies each call
+  score(candidates, { likedGenres = {}, likedArtists = [], sessionLikedGenres = {}, sessionLikedArtists = [], mode = "trending" }) {
+    const likedArtistSet = new Set(likedArtists.map(a => a.toLowerCase()));
+    const sessionArtistSet = new Set(sessionLikedArtists.map(a => a.toLowerCase()));
+
     return candidates.map(track => {
       let score = 0;
-      // Popularity signal (0-100)
-      score += Math.min((track.popularity || 0) / 1000000, 100) * 0.4;
-      // Preview available bonus
-      if (track.previewAvailable) score += 20;
-      // Genre affinity
+
+      // Popularity signal
+      score += Math.min((track.popularity || 0) / 1000000, 100) * 0.3;
+
+      // Preview available — high priority
+      if (track.preview) score += 25;
+
+      // Long-term genre affinity (all-time liked genres)
       if (track.genre && likedGenres[track.genre]) {
-        score += likedGenres[track.genre] * 10;
+        score += Math.min(likedGenres[track.genre] * 6, 30);
       }
-      // Mode adjustments
-      if (mode === "trending") score += (track.popularity || 0) / 1000000 * 20;
-      if (mode === "genre") score += track.previewAvailable ? 15 : 0;
+
+      // SESSION MOMENTUM: in-session liked genres count 3x more
+      // If user liked 3 techno tracks this session, bias heavily toward techno
+      if (track.genre && sessionLikedGenres[track.genre]) {
+        score += Math.min(sessionLikedGenres[track.genre] * 18, 54);
+      }
+
+      // Long-term artist affinity
+      if (likedArtistSet.has((track.artist || "").toLowerCase())) {
+        score += 15;
+      }
+
+      // SESSION MOMENTUM: artists liked this session count 2x more
+      if (sessionArtistSet.has((track.artist || "").toLowerCase())) {
+        score += 25;
+      }
+
+      // Mode-specific boosts
+      if (mode === "trending") score += (track.popularity || 0) / 1000000 * 15;
+      if (mode === "recommendations") {
+        score += sessionArtistSet.has((track.artist || "").toLowerCase()) ? 20 : 0;
+      }
+
+      // Weighted randomization: ±15 noise so top tracks rotate naturally
+      score += (Math.random() - 0.5) * 30;
+
       return { ...track, _score: score };
     }).sort((a, b) => b._score - a._score);
   }
 
+  // Add reason label to each track (for "why this track" display)
+  addReasons(tracks, { mode, genre, likedGenres = {}, likedArtists = [] }) {
+    const likedArtistSet = new Set(likedArtists.map(a => a.toLowerCase()));
+    return tracks.map(track => {
+      let reason = null;
+      if (mode === 'recommendations') {
+        if (likedArtistSet.has((track.artist || '').toLowerCase())) {
+          reason = `Based on ${track.artist}`;
+        } else if (track.genre && likedGenres[track.genre]) {
+          reason = `From your ${track.genre} taste`;
+        } else {
+          reason = 'Recommended for you';
+        }
+      } else if (mode === 'genre') {
+        reason = genre ? `${genre.charAt(0).toUpperCase() + genre.slice(1)} pick` : 'Genre pick';
+      } else if (mode === 'trending') {
+        reason = 'Trending now';
+      }
+      return reason ? { ...track, reason } : track;
+    });
+  }
+
   // Main feed generation
   async generateFeed(mode, options = {}) {
-    const { limit = 20, seenIds = [], likedTrackIds = [], skippedIds = [], blacklistedIds = [], likedGenres = {} } = options;
+    const {
+      limit = 20,
+      seenIds = [],
+      likedTrackIds = [],
+      likedArtists = [],
+      sessionLikedGenres = {},
+      sessionLikedArtists = [],
+      skippedIds = [],
+      blacklistedIds = [],
+      likedGenres = {},
+      genre
+    } = options;
 
     try {
       // 1. Build candidate pool
@@ -129,7 +207,7 @@ class FeedEngine {
       // 2. Dedup
       candidates = this.dedup(candidates);
 
-      // 3. Hard filter
+      // 3. Hard filter (remove seen/liked/skipped/blacklisted)
       candidates = this.hardFilter(candidates, {
         seenIds,
         likedIds: likedTrackIds,
@@ -137,17 +215,19 @@ class FeedEngine {
         blacklistedIds
       });
 
-      // 4. Artist diversity
+      // 4. Artist diversity (max 2 per artist, max 1 per album)
       candidates = this.applyArtistDiversity(candidates);
 
-      // 5. Score + rank
-      candidates = this.score(candidates, { likedGenres, mode });
+      // 5. Score + rank with session momentum
+      candidates = this.score(candidates, { likedGenres, likedArtists, sessionLikedGenres, sessionLikedArtists, mode });
 
-      // 6. Return top N
+      // 6. Add reason labels
+      candidates = this.addReasons(candidates, { mode, genre, likedGenres, likedArtists });
+
+      // 7. Return top N
       return candidates.slice(0, limit);
     } catch (err) {
       console.error("FeedEngine error:", err.message);
-      // Fallback: simple search
       try {
         return await deezer.search('top hits');
       } catch (e) {

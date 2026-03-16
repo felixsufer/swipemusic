@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const musicRoutes = require('./routes/music');
+const spotifyRoutes = require('./routes/spotify');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -11,6 +12,7 @@ app.use(express.json());
 
 // API routes first
 app.use('/api', musicRoutes);
+app.use('/api/spotify', spotifyRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 app.get('/version', (req, res) => res.json({ name: 'SwipeSound', commit: '5bfffb5-1773577216', ts: new Date().toISOString() }));
 

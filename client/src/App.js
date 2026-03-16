@@ -4,6 +4,8 @@ import SwipeStack from './components/SwipeStack';
 import PlayerBar from './components/PlayerBar';
 import LikedTracks from './components/LikedTracks';
 import AuthScreen from './components/AuthScreen';
+import HomeScreen from './components/HomeScreen';
+import GestureTutorial from './components/GestureTutorial';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useAuth } from './hooks/useAuth';
@@ -37,12 +39,35 @@ function App() {
     const stored = localStorage.getItem('crates');
     return stored ? JSON.parse(stored) : [];
   });
-  const [currentTab, setCurrentTab] = useState('discover');
+  const [currentTab, setCurrentTab] = useState('home');
+  const [recentTracks, setRecentTracks] = useState([]);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('swipemusic_tutorial_done'));
+
+  // Session momentum — tracks liked THIS session for algo boosting
+  const [sessionLikedGenres, setSessionLikedGenres] = useState({});
+  const [sessionLikedArtists, setSessionLikedArtists] = useState([]);
+
+  // Spotify OAuth token
+  const [spotifyToken, setSpotifyToken] = useState(() => localStorage.getItem('spotify_access_token') || null);
 
   // Session ID for event tracking
   useEffect(() => {
     if (!sessionStorage.getItem('session_id')) {
       sessionStorage.setItem('session_id', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    }
+  }, []);
+
+  // Handle Spotify OAuth callback tokens from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('spotify_access_token');
+    const refresh = params.get('spotify_refresh_token');
+    if (token) {
+      localStorage.setItem('spotify_access_token', token);
+      if (refresh) localStorage.setItem('spotify_refresh_token', refresh);
+      setSpotifyToken(token);
+      // Clean URL
+      window.history.replaceState({}, '', '/');
     }
   }, []);
 
@@ -89,6 +114,25 @@ function App() {
       // Always send liked + skipped + blacklisted across all modes
       const likedIds = getLikedTrackIds();
       if (likedIds.length > 0) url += `&likedTrackIds=${likedIds.join(',')}`;
+
+      // Send liked artists for better recommendations
+      const likedArtists = tasteProfile.topArtists.map(a => a.artist).filter(Boolean);
+      if (likedArtists.length > 0) url += `&likedArtists=${encodeURIComponent(likedArtists.join(','))}`;
+
+      // Send liked genres for scoring
+      if (tasteProfile.topGenres.length > 0) {
+        const genreMap = {};
+        tasteProfile.topGenres.forEach(g => { genreMap[g.genre] = g.count; });
+        url += `&likedGenres=${encodeURIComponent(JSON.stringify(genreMap))}`;
+      }
+
+      // Send session momentum (in-session likes have 3x weight on backend)
+      if (Object.keys(sessionLikedGenres).length > 0) {
+        url += `&sessionLikedGenres=${encodeURIComponent(JSON.stringify(sessionLikedGenres))}`;
+      }
+      if (sessionLikedArtists.length > 0) {
+        url += `&sessionLikedArtists=${encodeURIComponent(sessionLikedArtists.join(','))}`;
+      }
 
       const skippedIds = skipped.map(t => t.id).filter(Boolean);
       if (skippedIds.length > 0) url += `&skippedIds=${skippedIds.join(',')}`;
@@ -146,11 +190,21 @@ function App() {
   const handleLike = (track) => {
     likeTrack(track);
     recordEvent('like', track, { mode: currentMode, genre: selectedGenre });
+    setRecentTracks(prev => [track, ...prev.filter(t => t.id !== track.id)].slice(0, 10));
+
+    // Update session momentum
+    if (track.genre) {
+      setSessionLikedGenres(prev => ({ ...prev, [track.genre]: (prev[track.genre] || 0) + 1 }));
+    }
+    if (track.artist) {
+      setSessionLikedArtists(prev => [track.artist, ...prev.filter(a => a !== track.artist)].slice(0, 10));
+    }
   };
 
   const handleSkip = (track) => {
     skipTrack(track);
     recordEvent('skip', track, { mode: currentMode, genre: selectedGenre });
+    setRecentTracks(prev => [track, ...prev.filter(t => t.id !== track.id)].slice(0, 10));
   };
 
   const handleSaveToCrate = (track) => {
@@ -219,8 +273,29 @@ function App() {
     return <AuthScreen onSignIn={signInWithGoogle} />;
   }
 
+  const handleSelectGenre = (genre) => {
+    setSelectedGenre(genre);
+    handleModeChange('genre');
+    setCurrentTab('discover');
+  };
+
+  const handleSelectMode = (mode) => {
+    handleModeChange(mode);
+    setCurrentTab('discover');
+  };
+
   const renderTabContent = () => {
-    if (currentTab === 'discover') {
+    if (currentTab === 'home') {
+      return <HomeScreen
+        onStartSwiping={() => handleSelectMode('trending')}
+        onSelectGenre={handleSelectGenre}
+        onSelectMode={handleSelectMode}
+        recentTracks={recentTracks}
+        tasteProfile={tasteProfile}
+        liked={liked}
+        skipped={skipped}
+      />;
+    } else if (currentTab === 'discover') {
       return <SwipeStack
         key={stackKey}
         tracks={tracks}
@@ -240,16 +315,71 @@ function App() {
         onClose={() => setCurrentTab('discover')}
         onUnlike={handleUnlike}
       />;
-    } else if (currentTab === 'search') {
-      return <div className="coming-soon">
-        <h2>Search</h2>
-        <p>Coming soon</p>
-      </div>;
     } else if (currentTab === 'profile') {
-      return <div className="coming-soon">
-        <h2>Profile</h2>
-        <p>Coming soon</p>
-      </div>;
+      return (
+        <div className="profile-screen">
+          <div className="profile-header">
+            {user?.user_metadata?.avatar_url && (
+              <img src={user.user_metadata.avatar_url} alt="avatar" className="profile-avatar" />
+            )}
+            <h2>{user?.user_metadata?.full_name || user?.email}</h2>
+          </div>
+          <div className="profile-stats">
+            <div className="pstat"><span className="pstat-num">{liked.length + skipped.length}</span><span className="pstat-label">Swipes</span></div>
+            <div className="pstat"><span className="pstat-num">{liked.length}</span><span className="pstat-label">Liked</span></div>
+            <div className="pstat"><span className="pstat-num">{skipped.length}</span><span className="pstat-label">Skipped</span></div>
+            <div className="pstat"><span className="pstat-num">{crateItems.length}</span><span className="pstat-label">In Crate</span></div>
+          </div>
+          {tasteProfile.topGenres.length > 0 && (
+            <div className="profile-section">
+              <h3>Top Genres</h3>
+              <div className="profile-tags">
+                {tasteProfile.topGenres.map(g => (
+                  <span key={g.genre} className="profile-tag">{g.genre} <b>{g.count}</b></span>
+                ))}
+              </div>
+            </div>
+          )}
+          {tasteProfile.topArtists.length > 0 && (
+            <div className="profile-section">
+              <h3>Top Artists</h3>
+              <div className="profile-tags">
+                {tasteProfile.topArtists.map(a => (
+                  <span key={a.artist} className="profile-tag">{a.artist} <b>{a.count}</b></span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="profile-section">
+            <h3>Spotify</h3>
+            {spotifyToken ? (
+              <div className="spotify-connected">
+                <span>✅ Connected</span>
+                <button className="spotify-export-btn" onClick={async () => {
+                  if (!crateItems.length) return alert('Your crate is empty!');
+                  try {
+                    const res = await fetch('/api/spotify/export', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ access_token: spotifyToken, tracks: crateItems, playlist_name: 'SwipeSound Crate' })
+                    });
+                    const data = await res.json();
+                    if (data.playlist_url) window.open(data.playlist_url, '_blank');
+                    else alert('Export done! ' + (data.tracks_added || 0) + ' tracks added.');
+                  } catch (e) { alert('Export failed'); }
+                }}>
+                  Export Crate → Spotify Playlist
+                </button>
+              </div>
+            ) : (
+              <a href="/api/spotify/auth" className="spotify-connect-btn">
+                Connect Spotify
+              </a>
+            )}
+          </div>
+          <button className="signout-btn" onClick={handleSignOut}>Sign Out</button>
+        </div>
+      );
     }
   };
 
@@ -340,11 +470,26 @@ function App() {
 
       <PlayerBar currentTrack={currentTrack} />
 
+      {/* Tutorial overlay */}
+      {showTutorial && currentTab === 'discover' && (
+        <GestureTutorial onDone={() => {
+          localStorage.setItem('swipemusic_tutorial_done', 'true');
+          setShowTutorial(false);
+        }} />
+      )}
+
       {/* Bottom Navigation */}
       <div className="bottom-nav">
         <button
+          className={`nav-tab ${currentTab === 'home' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('home')}
+        >
+          <span className="nav-icon">🏠</span>
+          <span className="nav-label">Home</span>
+        </button>
+        <button
           className={`nav-tab ${currentTab === 'discover' ? 'active' : ''}`}
-          onClick={() => setCurrentTab('discover')}
+          onClick={() => { if (currentTab !== 'discover') { setCurrentTab('discover'); } }}
         >
           <span className="nav-icon">🎵</span>
           <span className="nav-label">Discover</span>
@@ -355,13 +500,6 @@ function App() {
         >
           <span className="nav-icon">🗂</span>
           <span className="nav-label">Crates</span>
-        </button>
-        <button
-          className={`nav-tab ${currentTab === 'search' ? 'active' : ''}`}
-          onClick={() => setCurrentTab('search')}
-        >
-          <span className="nav-icon">🔍</span>
-          <span className="nav-label">Search</span>
         </button>
         <button
           className={`nav-tab ${currentTab === 'profile' ? 'active' : ''}`}

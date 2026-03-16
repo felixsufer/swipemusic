@@ -1,0 +1,108 @@
+.gesture-tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(8px);
+}
+
+.gesture-tutorial-card {
+  background: #111;
+  border: 1px solid #ffffff15;
+  border-radius: 24px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.tutorial-progress {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #333;
+  transition: background 0.3s;
+}
+
+.progress-dot.active {
+  background: #a78bfa;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.progress-dot.done {
+  background: #6366f155;
+}
+
+.tutorial-arrow {
+  font-size: 48px;
+  line-height: 1;
+  animation: bounce-arrow 1s ease-in-out infinite alternate;
+}
+
+@keyframes bounce-arrow {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+
+.tutorial-emoji {
+  font-size: 36px;
+}
+
+.tutorial-label {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.tutorial-desc {
+  font-size: 15px;
+  opacity: 0.6;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.tutorial-btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.tutorial-btn-skip {
+  background: #222;
+  color: #aaa;
+}
+
+.tutorial-btn-next {
+  color: #000;
+}
+
+.tutorial-btn-done {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: white;
+}
