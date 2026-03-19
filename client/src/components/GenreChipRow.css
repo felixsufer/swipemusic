@@ -1,0 +1,53 @@
+.genre-chip-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 16px 8px;
+  margin: 0 -16px; /* bleed to edges under the header */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.genre-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.genre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid color-mix(in srgb, var(--chip-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--chip-bg) 80%, #0d0d1a 20%);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+.genre-chip:active {
+  transform: scale(0.95);
+}
+
+.genre-chip.active {
+  background: color-mix(in srgb, var(--chip-accent) 20%, #0d0d1a 80%);
+  border-color: var(--chip-accent);
+  color: var(--chip-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--chip-accent) 35%, transparent);
+}
+
+.chip-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.chip-label {
+  line-height: 1;
+}

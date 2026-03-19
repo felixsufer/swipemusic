@@ -6,6 +6,7 @@ import LikedTracks from './components/LikedTracks';
 import AuthScreen from './components/AuthScreen';
 import HomeScreen from './components/HomeScreen';
 import GestureTutorial from './components/GestureTutorial';
+import GenreChipRow from './components/GenreChipRow';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useAuth } from './hooks/useAuth';
@@ -427,27 +428,14 @@ function App() {
           />
 
           {currentMode === 'genre' && (
-            <div className="genre-selector">
-              <select
-                value={selectedGenre}
-                onChange={(e) => setSelectedGenre(e.target.value)}
-                className="genre-select"
-              >
-                <option value="electronic">Electronic</option>
-                <option value="dance">Dance</option>
-                <option value="techno">Techno</option>
-                <option value="house">House</option>
-                <option value="bass">Bass Music</option>
-                <option value="dubstep">Dubstep</option>
-                <option value="dnb">Drum & Bass</option>
-                <option value="pop">Pop</option>
-                <option value="rock">Rock</option>
-                <option value="metal">Metal</option>
-                <option value="hiphop">Hip Hop</option>
-                <option value="rap">Rap</option>
-                <option value="rnb">R&B</option>
-              </select>
-            </div>
+            <GenreChipRow
+              selectedGenre={selectedGenre}
+              onSelectGenre={(genre) => {
+                setSelectedGenre(genre);
+                setTracks([]);
+                setStackKey(prev => prev + 1);
+              }}
+            />
           )}
 
           {hasEnoughData && tasteProfile.topGenres.length > 0 && (
