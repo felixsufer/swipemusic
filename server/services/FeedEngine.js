@@ -197,7 +197,9 @@ class FeedEngine {
       skippedIds = [],
       blacklistedIds = [],
       likedGenres = {},
-      genre
+      genre,
+      bpmMin = null,
+      bpmMax = null
     } = options;
 
     try {
@@ -215,16 +217,31 @@ class FeedEngine {
         blacklistedIds
       });
 
-      // 4. Artist diversity (max 2 per artist, max 1 per album)
+      // 4. Enrich with BPM data (cached, parallel)
+      candidates = await deezer.enrichWithBpm(candidates);
+
+      // 4b. BPM range filter (only if requested)
+      if (bpmMin !== null || bpmMax !== null) {
+        const withBpm = candidates.filter(t => {
+          if (!t.bpm) return true; // keep unknown BPM tracks (don't over-filter)
+          if (bpmMin !== null && t.bpm < bpmMin) return false;
+          if (bpmMax !== null && t.bpm > bpmMax) return false;
+          return true;
+        });
+        // If BPM filter leaves too few, fall back to full pool
+        candidates = withBpm.length >= 5 ? withBpm : candidates;
+      }
+
+      // 5. Artist diversity (max 2 per artist, max 1 per album)
       candidates = this.applyArtistDiversity(candidates);
 
-      // 5. Score + rank with session momentum
+      // 6. Score + rank with session momentum
       candidates = this.score(candidates, { likedGenres, likedArtists, sessionLikedGenres, sessionLikedArtists, mode });
 
-      // 6. Add reason labels
+      // 7. Add reason labels
       candidates = this.addReasons(candidates, { mode, genre, likedGenres, likedArtists });
 
-      // 7. Return top N
+      // 8. Return top N
       return candidates.slice(0, limit);
     } catch (err) {
       console.error("FeedEngine error:", err.message);

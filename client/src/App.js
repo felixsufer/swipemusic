@@ -7,6 +7,7 @@ import AuthScreen from './components/AuthScreen';
 import HomeScreen from './components/HomeScreen';
 import GestureTutorial from './components/GestureTutorial';
 import GenreChipRow from './components/GenreChipRow';
+import BpmFilter from './components/BpmFilter';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useAuth } from './hooks/useAuth';
@@ -28,6 +29,8 @@ function App() {
   const [showLikedTracks, setShowLikedTracks] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState('electronic');
   const [stackKey, setStackKey] = useState(0);
+  const [bpmMin, setBpmMin] = useState(null);
+  const [bpmMax, setBpmMax] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   // Track events + DB-persisted seen/blacklist history
   const { seenIds: dbSeenIds, blacklistedIds: dbBlacklistedIds, recordEvent, loaded: eventsLoaded } = useTrackEvents(user?.id);
@@ -140,6 +143,9 @@ function App() {
 
       if (allBlacklistedIds.length > 0) url += `&blacklistedIds=${allBlacklistedIds.join(',')}`;
 
+      if (bpmMin != null) url += `&bpmMin=${bpmMin}`;
+      if (bpmMax != null) url += `&bpmMax=${bpmMax}`;
+
       const response = await fetch(url);
       const data = await response.json();
 
@@ -170,7 +176,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds]);
+  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds, bpmMin, bpmMax]);
 
   // Fetch tracks when mode changes — wait for DB history to load first
   useEffect(() => {
@@ -179,6 +185,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMode, selectedGenre, eventsLoaded]);
 
+  // Re-fetch when BPM filter changes (handleBpmChange already reset the stack)
+  useEffect(() => {
+    if (!eventsLoaded) return;
+    fetchTracks(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bpmMin, bpmMax]);
+
   const handleModeChange = (mode) => {
     setCurrentMode(mode);
     setTracks([]);
@@ -186,6 +199,14 @@ function App() {
     setStackKey(prev => prev + 1);
     // seenTrackIdsByMode persists per-mode — switching modes gives fresh content
     // but switching BACK to same mode won't re-show already-seen tracks
+  };
+
+  const handleBpmChange = (min, max) => {
+    setBpmMin(min);
+    setBpmMax(max);
+    // Reset stack so new BPM filter applies immediately
+    setTracks([]);
+    setStackKey(prev => prev + 1);
   };
 
   const handleLike = (track) => {
@@ -437,6 +458,12 @@ function App() {
               }}
             />
           )}
+
+          <BpmFilter
+            bpmMin={bpmMin}
+            bpmMax={bpmMax}
+            onChange={handleBpmChange}
+          />
 
           {hasEnoughData && tasteProfile.topGenres.length > 0 && (
             <div className="taste-profile">

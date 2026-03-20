@@ -32,7 +32,9 @@ router.get('/tracks', async (req, res) => {
       blacklistedIds,
       seenIds,
       likedGenres,
-      limit = 20
+      limit = 20,
+      bpmMin,
+      bpmMax
     } = req.query;
 
     // Parse comma-separated params
@@ -66,7 +68,9 @@ router.get('/tracks', async (req, res) => {
       blacklistedIds: parsedBlacklistedIds,
       seenIds: parsedSeenIds,
       likedGenres: parsedLikedGenres,
-      limit: parsedLimit
+      limit: parsedLimit,
+      bpmMin: bpmMin ? parseFloat(bpmMin) : null,
+      bpmMax: bpmMax ? parseFloat(bpmMax) : null
     });
 
     res.json({

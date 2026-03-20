@@ -341,6 +341,51 @@ class DeezerProvider extends MusicProvider {
       return this.getTrendingTracks();
     }
   }
+
+  /**
+   * Enrich tracks with BPM data from Deezer track detail endpoint
+   * Uses in-memory cache so repeated calls are instant
+   */
+  async enrichWithBpm(tracks) {
+    if (!this._bpmCache) this._bpmCache = {};
+    const cache = this._bpmCache;
+
+    const toFetch = tracks.filter(t => {
+      if (t.bpm) return false; // already have it
+      const id = this._deezerId(t.id);
+      return id && !cache[id];
+    });
+
+    if (toFetch.length > 0) {
+      // Batch parallel fetch (max 20 at a time)
+      const batch = toFetch.slice(0, 20);
+      const results = await Promise.allSettled(
+        batch.map(t => {
+          const id = this._deezerId(t.id);
+          return fetch(`${this.baseUrl}/track/${id}`, { timeout: 4000 })
+            .then(r => r.json())
+            .then(d => ({ id, bpm: d.bpm || null }))
+            .catch(() => ({ id, bpm: null }));
+        })
+      );
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          cache[r.value.id] = r.value.bpm;
+        }
+      });
+    }
+
+    return tracks.map(t => {
+      const id = this._deezerId(t.id);
+      return { ...t, bpm: t.bpm || (id ? cache[id] : null) || null };
+    });
+  }
+
+  _deezerId(id) {
+    if (!id) return null;
+    if (String(id).includes(':')) return String(id).split(':')[1];
+    return String(id);
+  }
 }
 
 module.exports = DeezerProvider;
