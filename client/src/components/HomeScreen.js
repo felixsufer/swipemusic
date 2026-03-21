@@ -22,8 +22,25 @@ const GENRE_VIBES = [
   { id: 'jazz', label: 'Jazz', emoji: '🎷', color: '#1a1000', accent: '#ffc107', artists: 'Miles Davis · Coltrane · Kamasi Washington' },
 ];
 
-const HomeScreen = ({ onStartSwiping, onSelectGenre, onSelectMode, recentTracks = [], tasteProfile, liked = [], skipped = [] }) => {
+const HomeScreen = ({
+  onStartSwiping,
+  onSelectGenre,
+  onSelectMode,
+  recentTracks = [],
+  tasteProfile,
+  liked = [],
+  skipped = [],
+  hasEnoughData = false,
+  crateItems = [],
+}) => {
   const totalSwipes = liked.length + skipped.length;
+
+  // Recently liked = last 6 liked tracks from DB (persistent across sessions)
+  const recentlyLiked = liked.slice(0, 6);
+
+  // Top artist from taste profile
+  const topArtist = tasteProfile?.topArtists?.[0]?.artist || null;
+  const topArtistCount = tasteProfile?.topArtists?.[0]?.count || 0;
 
   return (
     <div className="home-screen">
@@ -38,7 +55,7 @@ const HomeScreen = ({ onStartSwiping, onSelectGenre, onSelectMode, recentTracks 
         </button>
       </div>
 
-      {/* Stats bar */}
+      {/* Stats bar — shown once there's data */}
       {totalSwipes > 0 && (
         <div className="home-stats">
           <div className="stat-item">
@@ -53,29 +70,75 @@ const HomeScreen = ({ onStartSwiping, onSelectGenre, onSelectMode, recentTracks 
             <span className="stat-num">{skipped.length}</span>
             <span className="stat-label">Skipped</span>
           </div>
+          <div className="stat-item">
+            <span className="stat-num">{crateItems.length}</span>
+            <span className="stat-label">In Crate</span>
+          </div>
         </div>
       )}
 
-      {/* Recently discovered */}
-      {recentTracks.length > 0 && (
+      {/* For You unlock card — shown when hasEnoughData */}
+      {hasEnoughData && (
+        <div className="for-you-card" onClick={() => onSelectMode('recommendations')}>
+          <div className="for-you-content">
+            <span className="for-you-icon">✨</span>
+            <div>
+              <div className="for-you-title">For You — Ready</div>
+              <div className="for-you-sub">Personalised feed based on {liked.length} liked tracks</div>
+            </div>
+          </div>
+          <span className="for-you-arrow">→</span>
+        </div>
+      )}
+
+      {/* Recently Liked — from persistent DB */}
+      {recentlyLiked.length > 0 && (
         <section className="home-section">
-          <h2 className="home-section-title">Recently Discovered</h2>
+          <div className="home-section-header">
+            <h2 className="home-section-title">Recently Liked</h2>
+            <button className="home-section-link" onClick={() => onSelectMode('recommendations')}>
+              {hasEnoughData ? 'See For You →' : `${5 - liked.length} more to unlock`}
+            </button>
+          </div>
           <div className="recent-tracks">
-            {recentTracks.slice(0, 6).map((track, i) => (
+            {recentlyLiked.map((track, i) => (
               <div key={track.id || i} className="recent-track-chip">
                 <img
-                  src={track.artwork || track.albumCover}
+                  src={track.artworkSmall || track.artwork || track.albumCover}
                   alt={track.title}
                   className="recent-track-art"
+                  onError={(e) => { e.target.style.background = '#333'; e.target.style.display = 'none'; }}
                 />
                 <div className="recent-track-info">
                   <span className="recent-track-title">{track.title}</span>
                   <span className="recent-track-artist">{track.artist}</span>
                 </div>
+                {track.genre && (
+                  <span className="recent-track-genre">{track.genre}</span>
+                )}
               </div>
             ))}
           </div>
         </section>
+      )}
+
+      {/* Top artist spotlight — once taste is established */}
+      {topArtist && topArtistCount >= 2 && (
+        <div
+          className="artist-spotlight"
+          onClick={() => {
+            // Find matching genre vibe card artist and jump to genre, or go to For You
+            if (hasEnoughData) onSelectMode('recommendations');
+            else onStartSwiping();
+          }}
+        >
+          <div className="artist-spotlight-inner">
+            <span className="spotlight-label">Your top artist</span>
+            <span className="spotlight-artist">{topArtist}</span>
+            <span className="spotlight-count">{topArtistCount} liked tracks</span>
+          </div>
+          <span className="spotlight-arrow">→</span>
+        </div>
       )}
 
       {/* Your taste modes */}
@@ -83,7 +146,7 @@ const HomeScreen = ({ onStartSwiping, onSelectGenre, onSelectMode, recentTracks 
         <section className="home-section">
           <h2 className="home-section-title">Your Vibes</h2>
           <div className="vibe-pills">
-            {tasteProfile.topGenres.slice(0, 4).map(g => (
+            {tasteProfile.topGenres.slice(0, 5).map(g => (
               <button
                 key={g.genre}
                 className="vibe-pill"

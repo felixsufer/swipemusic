@@ -316,6 +316,8 @@ function App() {
         tasteProfile={tasteProfile}
         liked={liked}
         skipped={skipped}
+        hasEnoughData={hasEnoughData}
+        crateItems={crateItems}
       />;
     } else if (currentTab === 'discover') {
       return <SwipeStack
