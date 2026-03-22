@@ -8,6 +8,7 @@ import HomeScreen from './components/HomeScreen';
 import GestureTutorial from './components/GestureTutorial';
 import GenreChipRow from './components/GenreChipRow';
 import BpmFilter from './components/BpmFilter';
+import SearchScreen from './components/SearchScreen';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useAuth } from './hooks/useAuth';
@@ -332,6 +333,12 @@ function App() {
         onBlacklist={handleBlacklist}
         currentMode={currentMode}
       />;
+    } else if (currentTab === 'search') {
+      return <SearchScreen
+        onPlayTrack={(track) => setCurrentTrack(track)}
+        onLike={handleLike}
+        onSaveToCrate={handleSaveToCrate}
+      />;
     } else if (currentTab === 'crates') {
       return <LikedTracks
         tracks={liked}
@@ -510,6 +517,13 @@ function App() {
         >
           <span className="nav-icon">🎵</span>
           <span className="nav-label">Discover</span>
+        </button>
+        <button
+          className={`nav-tab ${currentTab === 'search' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('search')}
+        >
+          <span className="nav-icon">🔍</span>
+          <span className="nav-label">Search</span>
         </button>
         <button
           className={`nav-tab ${currentTab === 'crates' ? 'active' : ''}`}
