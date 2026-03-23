@@ -254,6 +254,14 @@
   border-color: #6366f1;
 }
 
+.stamp-block {
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) rotate(5deg);
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
 .action-buttons {
   display: flex;
   gap: 24px;

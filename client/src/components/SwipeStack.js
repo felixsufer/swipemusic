@@ -100,6 +100,8 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
       onLike(track);
     } else if (direction === 'up') {
       if (onSaveToCrate) onSaveToCrate(track);
+    } else if (direction === 'down') {
+      if (onBlacklist) onBlacklist(track);
     } else {
       onSkip(track);
     }
@@ -131,8 +133,8 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
     if (onBlacklist) {
       onBlacklist(currentTrack);
     }
-    // Also swipe away the card
-    handleSwipe('left', currentTrack);
+    // Swipe away the card as "down"
+    handleSwipe('down', currentTrack);
     setShowMoreMenu(false);
   }, [swipedCount, tracks, onBlacklist, handleSwipe]);
 
@@ -161,6 +163,9 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         handleSaveToCrate();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleBlacklist();
       }
     };
 

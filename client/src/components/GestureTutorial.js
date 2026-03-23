@@ -5,6 +5,7 @@ const STEPS = [
   { direction: 'right', emoji: '♥', label: 'Like', description: 'Swipe right to like a track', color: '#00e676', arrow: '→' },
   { direction: 'left', emoji: '✕', label: 'Skip', description: 'Swipe left to skip', color: '#ff1744', arrow: '←' },
   { direction: 'up', emoji: '🔖', label: 'Save to Crate', description: 'Swipe up to save for your next set', color: '#6366f1', arrow: '↑' },
+  { direction: 'down', emoji: '🚫', label: 'Block', description: 'Swipe down to never see this track again', color: '#dc2626', arrow: '↓' },
 ];
 
 const GestureTutorial = ({ onDone }) => {
