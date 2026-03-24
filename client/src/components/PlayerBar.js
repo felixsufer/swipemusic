@@ -121,9 +121,9 @@ const PlayerBar = ({ currentTrack }) => {
 
       <div className="player-content">
         <div className="player-info">
-          {currentTrack.albumCoverSmall && (
+          {(currentTrack.artworkSmall || currentTrack.artwork || currentTrack.albumCoverSmall || currentTrack.albumCover) && (
             <img
-              src={currentTrack.albumCoverSmall}
+              src={currentTrack.artworkSmall || currentTrack.artwork || currentTrack.albumCoverSmall || currentTrack.albumCover}
               alt={currentTrack.album}
               className="player-album-art"
             />

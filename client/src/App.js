@@ -11,6 +11,7 @@ import BpmFilter from './components/BpmFilter';
 import SearchScreen from './components/SearchScreen';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
+import { useCrate } from './hooks/useCrate';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
@@ -40,10 +41,8 @@ function App() {
     const stored = localStorage.getItem('blacklistedIds');
     return stored ? JSON.parse(stored) : [];
   });
-  const [crateItems, setCrateItems] = useState(() => {
-    const stored = localStorage.getItem('crates');
-    return stored ? JSON.parse(stored) : [];
-  });
+  // Crate — now synced to Supabase via useCrate hook
+  const { crateItems, addToCrate, removeFromCrate, isInCrate } = useCrate(user?.id);
   const [currentTab, setCurrentTab] = useState('home');
   const [recentTracks, setRecentTracks] = useState([]);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('swipemusic_tutorial_done'));
@@ -231,9 +230,7 @@ function App() {
   };
 
   const handleSaveToCrate = (track) => {
-    const updated = [...crateItems, track];
-    setCrateItems(updated);
-    localStorage.setItem('crates', JSON.stringify(updated));
+    addToCrate(track);
     handleSaveToCrateEvent(track);
   };
 
@@ -345,6 +342,7 @@ function App() {
         crateItems={crateItems}
         onClose={() => setCurrentTab('discover')}
         onUnlike={handleUnlike}
+        onRemoveFromCrate={removeFromCrate}
       />;
     } else if (currentTab === 'profile') {
       return (

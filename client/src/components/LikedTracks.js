@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './LikedTracks.css';
 
-const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike }) => {
+const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike, onRemoveFromCrate }) => {
   const [activeTab, setActiveTab] = useState('liked');
   const displayTracks = activeTab === 'liked' ? tracks : crateItems;
   const isEmpty = (!tracks || tracks.length === 0) && (!crateItems || crateItems.length === 0);
@@ -53,6 +53,16 @@ const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike }) => {
                     title="Remove from liked"
                   >
                     ♥
+                  </button>
+                )}
+                {activeTab === 'crate' && onRemoveFromCrate && (
+                  <button
+                    className="unlike-button"
+                    onClick={() => onRemoveFromCrate(track.id)}
+                    title="Remove from crate"
+                    style={{ backgroundColor: 'rgba(99,102,241,0.85)' }}
+                  >
+                    🗑
                   </button>
                 )}
                 <div className="track-source-badge">
