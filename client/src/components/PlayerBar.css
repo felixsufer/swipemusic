@@ -4,7 +4,8 @@
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .player-progress-container {
@@ -130,6 +131,52 @@
   font-variant-numeric: tabular-nums;
 }
 
+.player-share-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.player-share-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.player-share-button:active {
+  transform: scale(0.92);
+}
+
+.player-share-toast {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 16px;
+  background: rgba(30, 40, 60, 0.95);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  animation: toastFadeIn 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.15);
+  white-space: nowrap;
+}
+
+@keyframes toastFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 480px) {
   .player-content {
     padding: 10px 12px;
@@ -156,5 +203,11 @@
 
   .player-time {
     font-size: 10px;
+  }
+
+  .player-share-button {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
   }
 }

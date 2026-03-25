@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
+import { shareTrack } from '../lib/shareTrack';
 import './LikedTracks.css';
 
 const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike, onRemoveFromCrate }) => {
   const [activeTab, setActiveTab] = useState('liked');
+  const [shareToasts, setShareToasts] = useState({}); // trackId → 'copied' | 'shared'
+
+  const handleShare = async (track) => {
+    const result = await shareTrack(track);
+    if (result.method === 'abort') return;
+    const msg = result.method === 'share' ? 'shared' : result.method === 'clipboard' ? 'copied' : null;
+    if (msg) {
+      setShareToasts(prev => ({ ...prev, [track.id]: msg }));
+      setTimeout(() => setShareToasts(prev => { const n = { ...prev }; delete n[track.id]; return n; }), 2500);
+    }
+  };
   const displayTracks = activeTab === 'liked' ? tracks : crateItems;
-  const isEmpty = (!tracks || tracks.length === 0) && (!crateItems || crateItems.length === 0);
 
   return (
     <div className="liked-tracks-container-fullscreen">
@@ -75,14 +86,23 @@ const LikedTracks = ({ tracks, crateItems = [], onClose, onUnlike, onRemoveFromC
                 {track.genre && (
                   <div className="track-card-genre">{track.genre}</div>
                 )}
-                {track.deepLink && (
+                <div className="track-card-actions">
+                  {track.deepLink && (
+                    <button
+                      className="track-open-button"
+                      onClick={() => window.open(track.deepLink, '_blank')}
+                    >
+                      Open
+                    </button>
+                  )}
                   <button
-                    className="track-open-button"
-                    onClick={() => window.open(track.deepLink, '_blank')}
+                    className="track-share-button"
+                    onClick={() => handleShare(track)}
+                    title="Share track"
                   >
-                    Open
+                    {shareToasts[track.id] ? (shareToasts[track.id] === 'copied' ? '📋' : '✅') : '↗'}
                   </button>
-                )}
+                </div>
               </div>
             </div>
           ))}

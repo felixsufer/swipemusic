@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { shareTrack } from '../lib/shareTrack';
 import './PlayerBar.css';
 
 const PlayerBar = ({ currentTrack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [shareToast, setShareToast] = useState(null); // 'shared' | 'copied' | null
   const audioRef = useRef(null);
   const progressBarRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
     if (currentTrack && currentTrack.preview) {
@@ -71,6 +74,18 @@ const PlayerBar = ({ currentTrack }) => {
 
     audioRef.current.currentTime = newTime;
     setCurrentTime(newTime);
+  };
+
+  const handleShare = async () => {
+    if (!currentTrack) return;
+    const result = await shareTrack(currentTrack);
+    if (result.method === 'abort') return;
+    const msg = result.method === 'share' ? 'shared' : result.method === 'clipboard' ? 'copied' : null;
+    if (msg) {
+      setShareToast(msg);
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setShareToast(null), 2500);
+    }
   };
 
   const formatTime = (time) => {
@@ -144,8 +159,21 @@ const PlayerBar = ({ currentTrack }) => {
           <div className="player-time">
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
+          <button
+            className="player-share-button"
+            onClick={handleShare}
+            title="Share track"
+            aria-label="Share track"
+          >
+            {shareToast === 'shared' ? '✅' : shareToast === 'copied' ? '📋' : '↗'}
+          </button>
         </div>
       </div>
+      {shareToast && (
+        <div className="player-share-toast">
+          {shareToast === 'copied' ? 'Link copied!' : 'Shared!'}
+        </div>
+      )}
     </div>
   );
 };
