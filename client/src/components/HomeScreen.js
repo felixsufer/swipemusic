@@ -32,6 +32,10 @@ const HomeScreen = ({
   skipped = [],
   hasEnoughData = false,
   crateItems = [],
+  streak = 0,
+  todayLikes = 0,
+  todaySwipes = 0,
+  totalDays = 0,
 }) => {
   const totalSwipes = liked.length + skipped.length;
 
@@ -41,6 +45,20 @@ const HomeScreen = ({
   // Top artist from taste profile
   const topArtist = tasteProfile?.topArtists?.[0]?.artist || null;
   const topArtistCount = tasteProfile?.topArtists?.[0]?.count || 0;
+
+  // Streak milestone labels
+  const streakLabel =
+    streak === 0 ? 'Start your streak' :
+    streak === 1 ? '1 Day Streak' :
+    `${streak} Day Streak`;
+
+  const streakSub =
+    streak === 0 ? 'Swipe to begin' :
+    streak < 3 ? 'Keep it going tomorrow!' :
+    streak < 7 ? 'Getting warmer 🔥' :
+    streak < 14 ? 'One week strong!' :
+    streak < 30 ? `${streak} days and counting` :
+    `🏆 ${streak} day legend`;
 
   return (
     <div className="home-screen">
@@ -53,6 +71,40 @@ const HomeScreen = ({
         <button className="home-cta-btn" onClick={() => onSelectMode('trending')}>
           Start Discovering →
         </button>
+      </div>
+
+      {/* Streak card — always visible (motivates new users to start) */}
+      <div className="streak-card">
+        <div className="streak-main">
+          <span className="streak-flame">🔥</span>
+          <div className="streak-text">
+            <span className="streak-count">{streak}</span>
+            <span className="streak-label">{streakLabel}</span>
+            <span className="streak-sub">{streakSub}</span>
+          </div>
+        </div>
+        <div className="streak-today">
+          {todaySwipes > 0 && (
+            <>
+              <div className="streak-today-item">
+                <span className="streak-today-num">{todaySwipes}</span>
+                <span>swipes today</span>
+              </div>
+              <div className="streak-today-item">
+                <span className="streak-today-num">{todayLikes}</span>
+                <span>liked</span>
+              </div>
+            </>
+          )}
+          {todaySwipes === 0 && streak > 0 && (
+            <div className="streak-today-item" style={{ opacity: 0.5 }}>
+              <span>Swipe to keep<br/>streak alive!</span>
+            </div>
+          )}
+          {totalDays > 1 && (
+            <span className="streak-new-badge">{totalDays} days</span>
+          )}
+        </div>
       </div>
 
       {/* Stats bar — shown once there's data */}

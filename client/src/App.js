@@ -13,6 +13,7 @@ import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useCrate } from './hooks/useCrate';
 import { useAuth } from './hooks/useAuth';
+import { useStreak } from './hooks/useStreak';
 import './App.css';
 
 const API_BASE = '/api';
@@ -50,6 +51,9 @@ function App() {
   // Session momentum — tracks liked THIS session for algo boosting
   const [sessionLikedGenres, setSessionLikedGenres] = useState({});
   const [sessionLikedArtists, setSessionLikedArtists] = useState([]);
+
+  // Session streak + daily stats
+  const { streak, todayLikes, todaySwipes, totalDays, recordActivity: recordStreakActivity } = useStreak();
 
   // Spotify OAuth token
   const [spotifyToken, setSpotifyToken] = useState(() => localStorage.getItem('spotify_access_token') || null);
@@ -212,6 +216,7 @@ function App() {
   const handleLike = (track) => {
     likeTrack(track);
     recordEvent('like', track, { mode: currentMode, genre: selectedGenre });
+    recordStreakActivity('like');
     setRecentTracks(prev => [track, ...prev.filter(t => t.id !== track.id)].slice(0, 10));
 
     // Update session momentum
@@ -226,6 +231,7 @@ function App() {
   const handleSkip = (track) => {
     skipTrack(track);
     recordEvent('skip', track, { mode: currentMode, genre: selectedGenre });
+    recordStreakActivity('swipe');
     setRecentTracks(prev => [track, ...prev.filter(t => t.id !== track.id)].slice(0, 10));
   };
 
@@ -316,6 +322,10 @@ function App() {
         skipped={skipped}
         hasEnoughData={hasEnoughData}
         crateItems={crateItems}
+        streak={streak}
+        todayLikes={todayLikes}
+        todaySwipes={todaySwipes}
+        totalDays={totalDays}
       />;
     } else if (currentTab === 'discover') {
       return <SwipeStack
