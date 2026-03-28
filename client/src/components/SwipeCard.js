@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import './SwipeCard.css';
 
-const SwipeCard = ({ track, onSwipe, isTop, showHint, mode }) => {
+const SwipeCard = ({ track, onSwipe, isTop, showHint, mode, tasteProfile }) => {
   const [hintVisible, setHintVisible] = useState(false);
   const controls = useAnimation();
 
@@ -72,11 +72,31 @@ const SwipeCard = ({ track, onSwipe, isTop, showHint, mode }) => {
   };
 
   const getWhyLabel = () => {
-    if (mode === 'recommendations') return '✦ Similar to your likes';
+    if (mode === 'recommendations') return '✦ For You';
     if (mode === 'genre') return `✦ ${track.genre || 'Genre'}`;
     if (mode === 'trending') return '✦ Trending';
     return null;
   };
+
+  // Compute genre affinity chips for "For You" recommendations mode
+  const getAffinityGenres = () => {
+    if (mode !== 'recommendations') return [];
+    if (!tasteProfile || !tasteProfile.topGenres || tasteProfile.topGenres.length === 0) return [];
+    // Find which of the user's top genres match this track
+    const trackGenre = track.genre ? track.genre.toLowerCase() : null;
+    const topGenres = tasteProfile.topGenres.slice(0, 5);
+    // Direct genre match first
+    const matched = topGenres.filter(g => {
+      if (!g.genre) return false;
+      const g2 = g.genre.toLowerCase();
+      return trackGenre && (trackGenre.includes(g2) || g2.includes(trackGenre));
+    });
+    // Return top 2 matching genres, or just the user's top 2 genres as context if no match
+    const result = matched.length > 0 ? matched.slice(0, 2) : topGenres.slice(0, 2);
+    return result.map(g => g.genre);
+  };
+
+  const affinityGenres = getAffinityGenres();
 
   return (
     <motion.div
@@ -118,6 +138,16 @@ const SwipeCard = ({ track, onSwipe, isTop, showHint, mode }) => {
           <div className="card-info">
             <h2 className="track-title">{track.title}</h2>
             <p className="track-artist">{track.artist}</p>
+            {affinityGenres.length > 0 && (
+              <div className="affinity-bar">
+                <span className="affinity-label">Because you like:</span>
+                <div className="affinity-chips">
+                  {affinityGenres.map((genre, i) => (
+                    <span key={i} className="affinity-chip">{genre}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

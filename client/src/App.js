@@ -339,6 +339,7 @@ function App() {
         onSaveToCrate={handleSaveToCrate}
         onBlacklist={handleBlacklist}
         currentMode={currentMode}
+        tasteProfile={tasteProfile}
       />;
     } else if (currentTab === 'search') {
       return <SearchScreen

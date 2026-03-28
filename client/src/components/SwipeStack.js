@@ -5,7 +5,7 @@ import './SwipeStack.css';
 const HINT_SHOWN_KEY = 'swipemusic_hint_shown';
 const API_BASE = '/api';
 
-const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUndo, onSaveToCrate, onBlacklist, currentMode }) => {
+const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUndo, onSaveToCrate, onBlacklist, currentMode, tasteProfile }) => {
   const [swipedCount, setSwipedCount] = useState(0);
   const [lastSwiped, setLastSwiped] = useState(null);
   const [showHint, setShowHint] = useState(false);
@@ -236,6 +236,7 @@ const SwipeStack = ({ tracks, onLike, onSkip, onNeedMore, onTopCardChange, onUnd
                 isTop={index === 0}
                 showHint={showHint && index === 0}
                 mode={currentMode}
+                tasteProfile={tasteProfile}
               />
             </div>
           );
