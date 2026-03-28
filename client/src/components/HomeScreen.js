@@ -149,7 +149,7 @@ const HomeScreen = ({
           <div className="home-section-header">
             <h2 className="home-section-title">Recently Liked</h2>
             <button className="home-section-link" onClick={() => onSelectMode('recommendations')}>
-              {hasEnoughData ? 'See For You →' : `${5 - liked.length} more to unlock`}
+              {hasEnoughData ? 'See For You →' : `${Math.max(0, 3 - liked.length)} more to unlock`}
             </button>
           </div>
           <div className="recent-tracks">

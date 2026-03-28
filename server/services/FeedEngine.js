@@ -63,7 +63,8 @@ class FeedEngine {
       }
 
       // Fallback to trending if not enough data
-      if (candidates.length < 10) {
+      // Threshold: 5 (not 10) — aligned with lower unlock threshold of 3 likes
+      if (candidates.length < 5) {
         const trending = await deezer.getTrendingTracks(30);
         candidates = [...candidates, ...trending];
       }

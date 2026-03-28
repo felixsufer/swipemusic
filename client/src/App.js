@@ -463,6 +463,7 @@ function App() {
             currentMode={currentMode}
             onModeChange={handleModeChange}
             hasEnoughData={hasEnoughData}
+            likedCount={liked.length}
           />
 
           {currentMode === 'genre' && (

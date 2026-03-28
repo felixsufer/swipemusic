@@ -224,7 +224,8 @@ export const useTasteProfile = (userId = null) => {
   }, []);
 
   // Check if we have enough data for recommendations
-  const hasEnoughData = liked.length >= 5;
+  // Unlock "For You" after 3 likes — lower threshold reduces time-to-personalization
+  const hasEnoughData = liked.length >= 3;
 
   // Get liked track IDs for API requests
   const getLikedTrackIds = useCallback(() => {
