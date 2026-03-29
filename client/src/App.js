@@ -52,8 +52,8 @@ function App() {
   const [sessionLikedGenres, setSessionLikedGenres] = useState({});
   const [sessionLikedArtists, setSessionLikedArtists] = useState([]);
 
-  // Session streak + daily stats
-  const { streak, todayLikes, todaySwipes, totalDays, recordActivity: recordStreakActivity } = useStreak();
+  // Session streak + daily stats — pass userId for Supabase sync
+  const { streak, todayLikes, todaySwipes, totalDays, recordActivity: recordStreakActivity } = useStreak(user?.id);
 
   // Spotify OAuth token
   const [spotifyToken, setSpotifyToken] = useState(() => localStorage.getItem('spotify_access_token') || null);
