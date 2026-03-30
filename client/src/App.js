@@ -9,6 +9,7 @@ import GestureTutorial from './components/GestureTutorial';
 import GenreChipRow from './components/GenreChipRow';
 import BpmFilter from './components/BpmFilter';
 import SearchScreen from './components/SearchScreen';
+import OnboardingFlow from './components/OnboardingFlow';
 import { useTasteProfile } from './hooks/useTasteProfile';
 import { useTrackEvents } from './hooks/useTrackEvents';
 import { useCrate } from './hooks/useCrate';
@@ -17,6 +18,7 @@ import { useStreak } from './hooks/useStreak';
 import './App.css';
 
 const API_BASE = '/api';
+const ONBOARDING_STORAGE_KEY = 'swipemusic_onboarding_v1';
 
 function App() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -47,6 +49,15 @@ function App() {
   const [currentTab, setCurrentTab] = useState('home');
   const [recentTracks, setRecentTracks] = useState([]);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('swipemusic_tutorial_done'));
+  const [onboardingPreferences, setOnboardingPreferences] = useState(() => {
+    try {
+      const stored = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Session momentum — tracks liked THIS session for algo boosting
   const [sessionLikedGenres, setSessionLikedGenres] = useState({});
@@ -90,6 +101,15 @@ function App() {
     getLikedTrackIds
   } = useTasteProfile(user?.id);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const hasExistingTaste = liked.length > 0 || skipped.length > 0;
+    const alreadyCompleted = Boolean(onboardingPreferences?.completedAt);
+
+    setShowOnboarding(!hasExistingTaste && !alreadyCompleted);
+  }, [user, liked.length, skipped.length, onboardingPreferences]);
+
   // Merge DB blacklist with local blacklist — stable reference
   const allBlacklistedIds = useMemo(() => [
     ...localBlacklistedIds,
@@ -132,6 +152,10 @@ function App() {
         const genreMap = {};
         tasteProfile.topGenres.forEach(g => { genreMap[g.genre] = g.count; });
         url += `&likedGenres=${encodeURIComponent(JSON.stringify(genreMap))}`;
+      } else if (onboardingPreferences?.genres?.length > 0) {
+        const seededGenreMap = {};
+        onboardingPreferences.genres.forEach((genre) => { seededGenreMap[genre] = 2; });
+        url += `&likedGenres=${encodeURIComponent(JSON.stringify(seededGenreMap))}`;
       }
 
       // Send session momentum (in-session likes have 3x weight on backend)
@@ -180,7 +204,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds, bpmMin, bpmMax]);
+  }, [currentMode, selectedGenre, getLikedTrackIds, seenTrackIdsByMode, allBlacklistedIds, skipped, dbSeenIds, bpmMin, bpmMax, tasteProfile.topGenres, onboardingPreferences, sessionLikedGenres, sessionLikedArtists]);
 
   // Fetch tracks when mode changes — wait for DB history to load first
   useEffect(() => {
@@ -282,6 +306,32 @@ function App() {
     signOut();
   };
 
+  const handleCompleteOnboarding = (preferences) => {
+    setOnboardingPreferences(preferences);
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(preferences));
+    setSelectedGenre(preferences.genres?.[0] || 'electronic');
+    setBpmMin(preferences.bpmMin ?? null);
+    setBpmMax(preferences.bpmMax ?? null);
+    setCurrentMode('genre');
+    setCurrentTab('discover');
+    setTracks([]);
+    setStackKey((prev) => prev + 1);
+    setShowOnboarding(false);
+  };
+
+  const handleSkipOnboarding = () => {
+    const skippedPreferences = {
+      genres: [],
+      bpmMin: null,
+      bpmMax: null,
+      completedAt: new Date().toISOString(),
+      skipped: true,
+    };
+    setOnboardingPreferences(skippedPreferences);
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(skippedPreferences));
+    setShowOnboarding(false);
+  };
+
   // Show loading screen while checking auth
   if (authLoading) {
     return (
@@ -326,6 +376,7 @@ function App() {
         todayLikes={todayLikes}
         todaySwipes={todaySwipes}
         totalDays={totalDays}
+        onboardingPreferences={onboardingPreferences}
       />;
     } else if (currentTab === 'discover') {
       return <SwipeStack
@@ -503,6 +554,15 @@ function App() {
       </main>
 
       <PlayerBar currentTrack={currentTrack} />
+
+      {showOnboarding && (
+        <OnboardingFlow
+          user={user}
+          initialPreferences={onboardingPreferences}
+          onComplete={handleCompleteOnboarding}
+          onSkip={handleSkipOnboarding}
+        />
+      )}
 
       {/* Tutorial overlay */}
       {showTutorial && currentTab === 'discover' && (

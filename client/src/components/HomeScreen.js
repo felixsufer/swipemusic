@@ -36,6 +36,7 @@ const HomeScreen = ({
   todayLikes = 0,
   todaySwipes = 0,
   totalDays = 0,
+  onboardingPreferences = null,
 }) => {
   const totalSwipes = liked.length + skipped.length;
 
@@ -72,6 +73,19 @@ const HomeScreen = ({
           Start Discovering →
         </button>
       </div>
+
+      {onboardingPreferences?.genres?.length > 0 && (
+        <div className="onboarding-summary-card">
+          <div className="onboarding-summary-copy">
+            <span className="onboarding-summary-kicker">Starter profile</span>
+            <strong>{onboardingPreferences.genres.slice(0, 3).join(' • ')}</strong>
+            <span>Using your onboarding picks to shape your first feed{onboardingPreferences.bpmMin != null || onboardingPreferences.bpmMax != null ? ` · BPM ${onboardingPreferences.bpmMin ?? '<'}-${onboardingPreferences.bpmMax ?? '+'}` : ''}</span>
+          </div>
+          <button className="onboarding-summary-btn" onClick={() => onSelectGenre(onboardingPreferences.genres[0])}>
+            Jump in →
+          </button>
+        </div>
+      )}
 
       {/* Streak card — always visible (motivates new users to start) */}
       <div className="streak-card">
